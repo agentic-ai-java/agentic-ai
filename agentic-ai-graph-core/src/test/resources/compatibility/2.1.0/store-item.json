@@ -1,0 +1,10 @@
+{
+  "namespace": ["users", "legacy-user", "preferences"],
+  "key": "ui-settings",
+  "value": {
+    "language": "en-US",
+    "theme": "dark"
+  },
+  "createdAt": 1700000000000,
+  "updatedAt": 1700000001000
+}

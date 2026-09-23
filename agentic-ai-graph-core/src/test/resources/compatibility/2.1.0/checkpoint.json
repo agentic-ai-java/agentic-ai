@@ -1,0 +1,9 @@
+{
+  "id": "checkpoint-2.1.0",
+  "state": {
+    "counter": 7,
+    "owner": "legacy-user"
+  },
+  "nodeId": "legacy-node",
+  "nextNodeId": "legacy-next"
+}
