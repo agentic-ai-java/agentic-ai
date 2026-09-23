@@ -1,0 +1,8 @@
+{
+  "properties": [
+    {
+      "name": "spring.ai.alibaba.agent.studio.execution.auth-token",
+      "type": "java.lang.String"
+    }
+  ]
+}

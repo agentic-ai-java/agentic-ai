@@ -64,6 +64,31 @@ class StudioExecutionControllerSecurityTest {
 	}
 
 	@Test
+	void runSseRejectsAnonymousRequestsWhenConfiguredTokenIsEmptyBeforeLoadingAgent() throws Exception {
+		AgentLoader agentLoader = mock(AgentLoader.class);
+		Agent agent = mock(Agent.class);
+		when(agentLoader.loadAgent("assistant")).thenReturn(agent);
+		when(agent.stream(any(org.springframework.ai.chat.messages.UserMessage.class), any()))
+				.thenReturn(Flux.empty());
+
+		standaloneSetup(new ExecutionController(agentLoader, new StudioExecutionAccess(""))).build()
+				.perform(post("/run_sse")
+						.header(StudioExecutionAccess.TOKEN_HEADER, "secret")
+						.contentType(APPLICATION_JSON)
+						.content("""
+								{
+								  "appName": "assistant",
+								  "userId": "alice",
+								  "threadId": "thread-1",
+								  "newMessage": { "messageType": "user", "content": "hi" }
+								}
+								"""))
+				.andExpect(status().isForbidden());
+
+		verify(agentLoader, never()).loadAgent("assistant");
+	}
+
+	@Test
 	void runSseAllowsRequestsWhenConfiguredTokenMatches() throws Exception {
 		AgentLoader agentLoader = mock(AgentLoader.class);
 		Agent agent = mock(Agent.class);

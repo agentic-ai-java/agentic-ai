@@ -1,0 +1,19 @@
+{
+  "properties": [
+    {
+      "name": "spring.ai.alibaba.graph.observation.capture-content",
+      "type": "java.lang.Boolean",
+      "defaultValue": false
+    },
+    {
+      "name": "spring.ai.alibaba.graph.observation.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.ai.alibaba.graph.observation.max-content-length",
+      "type": "java.lang.Integer",
+      "defaultValue": 1000
+    }
+  ]
+}
