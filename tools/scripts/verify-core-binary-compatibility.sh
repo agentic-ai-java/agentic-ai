@@ -25,6 +25,7 @@ readonly REMOVED_BUILTIN_NESTED_TYPES='io.github.agentic.spring.ai.graph.node.Kn
 readonly REMOVED_BUILTIN_NETWORK_TYPES='io.github.agentic.spring.ai.graph.node.HttpNode;io.github.agentic.spring.ai.graph.node.HttpNode$*;io.github.agentic.spring.ai.graph.node.DocumentExtractorNode;io.github.agentic.spring.ai.graph.node.DocumentExtractorNode$*;'
 readonly REMOVED_BUILTIN_EXECUTOR_TYPES='io.github.agentic.spring.ai.graph.node.code.DockerCodeExecutor;io.github.agentic.spring.ai.graph.node.code.DockerCodeExecutor$*'
 readonly REMOVED_BUILTIN_EXCLUDES="${REMOVED_BUILTIN_TYPES}${REMOVED_BUILTIN_NESTED_TYPES}${REMOVED_BUILTIN_NETWORK_TYPES}${REMOVED_BUILTIN_EXECUTOR_TYPES}"
+readonly CORE_RUNTIME_MODULES=':agentic-spring-ai-graph-core,:agentic-spring-ai-agent-framework,:agentic-spring-ai-studio,:agentic-spring-ai-starter-graph-observation,:agentic-spring-ai-starter-builtin-nodes'
 
 readonly REPO_ROOT="$(git rev-parse --show-toplevel)"
 readonly TMP_PARENT="${TMPDIR:-/tmp}"
@@ -37,7 +38,7 @@ cleanup() {
 	if git -C "${REPO_ROOT}" worktree list --porcelain | grep -Fqx "worktree ${BASELINE_WORKTREE}"; then
 		git -C "${REPO_ROOT}" worktree remove --force "${BASELINE_WORKTREE}" >/dev/null 2>&1 || true
 	fi
-	if [[ "${COMPAT_TMP}" == "${TMP_PARENT%/}"/agentic-core-binary-compat.* && -d "${COMPAT_TMP}" ]]; then
+	if [[ "${COMPAT_TMP}" == "${TMP_PARENT%/}"/agentic-core-binary-compat.* && "${BASELINE_WORKTREE}" == "${COMPAT_TMP}/baseline" && -d "${COMPAT_TMP}" ]]; then
 		rm -rf "${COMPAT_TMP}"
 	fi
 	git -C "${REPO_ROOT}" worktree prune >/dev/null 2>&1 || true
@@ -75,11 +76,11 @@ run_maven_with_retry() {
 echo "Preparing baseline worktree at ${BASE_COMMIT}"
 git -C "${REPO_ROOT}" worktree add --detach "${BASELINE_WORKTREE}" "${BASE_COMMIT}" >/dev/null
 
-echo "Building baseline Core graph/builtin artifacts in isolated Maven repo"
-run_maven_with_retry "${BASELINE_WORKTREE}" -U -DskipTests -pl :agentic-ai-graph-core,:agentic-ai-starter-builtin-nodes -am package
+echo "Building baseline public runtime artifacts in isolated Maven repo"
+run_maven_with_retry "${BASELINE_WORKTREE}" -U -DskipTests -pl "${CORE_RUNTIME_MODULES}" -am package
 
-echo "Building candidate Core graph/builtin artifacts in isolated Maven repo"
-run_maven_with_retry "${REPO_ROOT}" -U -DskipTests -pl :agentic-ai-graph-core,:agentic-ai-starter-builtin-nodes -am package
+echo "Building candidate public runtime artifacts in isolated Maven repo"
+run_maven_with_retry "${REPO_ROOT}" -U -DskipTests -pl "${CORE_RUNTIME_MODULES}" -am package
 
 echo "Resolving japicmp ${JAPICMP_VERSION}"
 run_maven_with_retry "${REPO_ROOT}" dependency:get \
@@ -114,13 +115,25 @@ compare_module() {
 	echo "Binary compatible: ${label} (${report_file})"
 }
 
-compare_module "agentic-ai-graph-core" \
-	"${BASELINE_WORKTREE}/agentic-ai-graph-core/target/agentic-ai-graph-core-${REVISION}.jar" \
-	"${REPO_ROOT}/agentic-ai-graph-core/target/agentic-ai-graph-core-${REVISION}.jar"
+compare_module "agentic-spring-ai-graph-core" \
+	"${BASELINE_WORKTREE}/agentic-spring-ai-graph-core/target/agentic-spring-ai-graph-core-${REVISION}.jar" \
+	"${REPO_ROOT}/agentic-ai-graph-core/target/agentic-spring-ai-graph-core-${REVISION}.jar"
 
-compare_module "agentic-ai-starter-builtin-nodes" \
-	"${BASELINE_WORKTREE}/spring-boot-starters/agentic-ai-starter-builtin-nodes/target/agentic-ai-starter-builtin-nodes-${REVISION}.jar" \
-	"${REPO_ROOT}/spring-boot-starters/agentic-ai-starter-builtin-nodes/target/agentic-ai-starter-builtin-nodes-${REVISION}.jar" \
+compare_module "agentic-spring-ai-agent-framework" \
+	"${BASELINE_WORKTREE}/agentic-spring-ai-agent-framework/target/agentic-spring-ai-agent-framework-${REVISION}.jar" \
+	"${REPO_ROOT}/agentic-ai-agent-framework/target/agentic-spring-ai-agent-framework-${REVISION}.jar"
+
+compare_module "agentic-spring-ai-studio" \
+	"${BASELINE_WORKTREE}/agentic-spring-ai-studio/target/agentic-spring-ai-studio-${REVISION}.jar" \
+	"${REPO_ROOT}/agentic-ai-studio/target/agentic-spring-ai-studio-${REVISION}.jar"
+
+compare_module "agentic-spring-ai-starter-graph-observation" \
+	"${BASELINE_WORKTREE}/spring-boot-starters/agentic-spring-ai-starter-graph-observation/target/agentic-spring-ai-starter-graph-observation-${REVISION}.jar" \
+	"${REPO_ROOT}/spring-boot-starters/agentic-ai-starter-graph-observation/target/agentic-spring-ai-starter-graph-observation-${REVISION}.jar"
+
+compare_module "agentic-spring-ai-starter-builtin-nodes" \
+	"${BASELINE_WORKTREE}/spring-boot-starters/agentic-spring-ai-starter-builtin-nodes/target/agentic-spring-ai-starter-builtin-nodes-${REVISION}.jar" \
+	"${REPO_ROOT}/spring-boot-starters/agentic-ai-starter-builtin-nodes/target/agentic-spring-ai-starter-builtin-nodes-${REVISION}.jar" \
 	"${REMOVED_BUILTIN_EXCLUDES}"
 
 echo "Core binary compatibility gate passed"
