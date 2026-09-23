@@ -18,6 +18,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -51,7 +54,7 @@ jobs:
       - uses: ./tools/github-actions/setup-deps
       - run: make tools
       - run: make test
-  compatibility:
+  jdk-compatibility:
     if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
     runs-on: ubuntu-22.04
     strategy:
@@ -64,10 +67,31 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
       - run: ./mvnw -B -DskipTests compile
+  api-compatibility:
+    if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: ./tools/github-actions/setup-deps
+      - run: make compatibility-check
+  extensions-compatibility:
+    if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./tools/github-actions/setup-deps
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: agentic-spring-ai/agentic-spring-ai-extensions
+          ref: 77718562c9b23b417407617a814c1fb3719aa87d
+          path: target/agentic-spring-ai-extensions
+      - run: tools/scripts/verify-extensions-compatibility.sh target/agentic-spring-ai-extensions
   build:
     if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
     runs-on: ubuntu-22.04
-    needs: [format, check-style, test, compatibility]
+    needs: [format, check-style, test, jdk-compatibility, api-compatibility, extensions-compatibility]
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: ./tools/github-actions/setup-deps
