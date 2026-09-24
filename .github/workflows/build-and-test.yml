@@ -86,8 +86,8 @@ jobs:
         with:
           repository: agentic-spring-ai/agentic-spring-ai-extensions
           ref: 77718562c9b23b417407617a814c1fb3719aa87d
-          path: target/agentic-spring-ai-extensions
-      - run: tools/scripts/verify-extensions-compatibility.sh target/agentic-spring-ai-extensions
+          path: .ci/agentic-spring-ai-extensions
+      - run: tools/scripts/verify-extensions-compatibility.sh .ci/agentic-spring-ai-extensions
   build:
     if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
     runs-on: ubuntu-22.04
