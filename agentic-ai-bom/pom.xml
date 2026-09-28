@@ -19,8 +19,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.github.agentic-ai</groupId>
-    <artifactId>agentic-ai-bom</artifactId>
+    <groupId>io.github.agentic-spring-ai</groupId>
+    <artifactId>agentic-spring-ai-bom</artifactId>
     <version>${revision}</version>
 
     <packaging>pom</packaging>
@@ -92,32 +92,32 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>io.github.agentic-ai</groupId>
-                <artifactId>agentic-ai-starter-graph-observation</artifactId>
+                <groupId>io.github.agentic-spring-ai</groupId>
+                <artifactId>agentic-spring-ai-starter-graph-observation</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.github.agentic-ai</groupId>
-                <artifactId>agentic-ai-starter-builtin-nodes</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>io.github.agentic-ai</groupId>
-                <artifactId>agentic-ai-agent-framework</artifactId>
+                <groupId>io.github.agentic-spring-ai</groupId>
+                <artifactId>agentic-spring-ai-starter-builtin-nodes</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>io.github.agentic-ai</groupId>
-                <artifactId>agentic-ai-graph-core</artifactId>
+                <groupId>io.github.agentic-spring-ai</groupId>
+                <artifactId>agentic-spring-ai-agent-framework</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.github.agentic-spring-ai</groupId>
+                <artifactId>agentic-spring-ai-graph-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <!-- Agentic AI Studio -->
             <dependency>
-                <groupId>io.github.agentic-ai</groupId>
-                <artifactId>agentic-ai-studio</artifactId>
+                <groupId>io.github.agentic-spring-ai</groupId>
+                <artifactId>agentic-spring-ai-studio</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

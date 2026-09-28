@@ -18,17 +18,11 @@
 set -euo pipefail
 
 readonly REPO_ROOT="$(git rev-parse --show-toplevel)"
-readonly TMP_PARENT="${TMPDIR:-/tmp}"
-readonly COMPAT_REPO="$(mktemp -d "${TMP_PARENT%/}/agentic-source-compat.XXXXXX")"
+readonly COMPAT_REPO="${SOURCE_COMPAT_MAVEN_REPO:-${REPO_ROOT}/target/binary-compatibility/m2}"
 readonly SOURCE_COMPAT_MODULES=':agentic-spring-ai-agent-framework,:agentic-spring-ai-studio,:agentic-spring-ai-starter-graph-observation,:agentic-spring-ai-starter-builtin-nodes'
 readonly FIXTURE_POM="${REPO_ROOT}/tools/compatibility/legacy-api-consumer/pom.xml"
 
-cleanup() {
-	if [[ "${COMPAT_REPO}" == "${TMP_PARENT%/}"/agentic-source-compat.* && -d "${COMPAT_REPO}" ]]; then
-		rm -rf "${COMPAT_REPO}"
-	fi
-}
-trap cleanup EXIT
+mkdir -p "${COMPAT_REPO}"
 
 if [[ ! -f "${REPO_ROOT}/mvnw" ]]; then
 	echo "Cannot find Maven wrapper under repository root: ${REPO_ROOT}" >&2
@@ -41,7 +35,7 @@ if [[ ! -f "${FIXTURE_POM}" ]]; then
 fi
 
 "${REPO_ROOT}/mvnw" -B -Dmaven.repo.local="${COMPAT_REPO}" \
-	-DskipTests -pl "${SOURCE_COMPAT_MODULES}" \
+	-Dmaven.test.skip=true -pl "${SOURCE_COMPAT_MODULES}" \
 	-am install
 
 "${REPO_ROOT}/mvnw" -B -Dmaven.repo.local="${COMPAT_REPO}" \

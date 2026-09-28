@@ -10,8 +10,8 @@ For RAG retrieval nodes, declare:
 
 ```xml
 <dependency>
-  <groupId>io.github.agentic-ai</groupId>
-  <artifactId>agentic-ai-graph-node-rag</artifactId>
+  <groupId>io.github.agentic-spring-ai</groupId>
+  <artifactId>agentic-spring-ai-graph-node-rag</artifactId>
 </dependency>
 ```
 
@@ -25,8 +25,8 @@ For HTTP and document extraction nodes, declare:
 
 ```xml
 <dependency>
-  <groupId>io.github.agentic-ai</groupId>
-  <artifactId>agentic-ai-graph-node-network</artifactId>
+  <groupId>io.github.agentic-spring-ai</groupId>
+  <artifactId>agentic-spring-ai-graph-node-network</artifactId>
 </dependency>
 ```
 
@@ -48,7 +48,7 @@ must opt in to broader access explicitly.
 ### Code Execution
 
 `DockerCodeExecutor` is provided by the Extensions-owned
-`agentic-ai-code-executor-docker` artifact in package
+`agentic-spring-ai-code-executor-docker` artifact in package
 `io.github.agentic.ai.graph.node.code.docker`. It disables networking,
 uses a read-only root filesystem, drops capabilities, and applies CPU, memory,
 swap, PID, and output limits.

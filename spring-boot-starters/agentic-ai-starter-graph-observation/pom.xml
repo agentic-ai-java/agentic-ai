@@ -18,13 +18,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.github.agentic-ai</groupId>
-        <artifactId>agentic-ai</artifactId>
+        <groupId>io.github.agentic-spring-ai</groupId>
+        <artifactId>agentic-spring-ai</artifactId>
         <version>${revision}</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>agentic-ai-starter-graph-observation</artifactId>
+    <artifactId>agentic-spring-ai-starter-graph-observation</artifactId>
     <packaging>jar</packaging>
     <name>Agentic AI Starter Graph Observation</name>
     <description>Spring Boot Starter for Agentic AI Graph Observation</description>
@@ -58,8 +58,8 @@
 
         <!-- Graph Core Dependency -->
         <dependency>
-            <groupId>io.github.agentic-ai</groupId>
-            <artifactId>agentic-ai-graph-core</artifactId>
+            <groupId>io.github.agentic-spring-ai</groupId>
+            <artifactId>agentic-spring-ai-graph-core</artifactId>
             <version>${revision}</version>
         </dependency>
 

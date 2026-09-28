@@ -90,8 +90,7 @@ function SelectionPageContent(): React.ReactNode {
       <header className="border-b bg-white/80 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <span className="text-lg font-semibold tracking-tight">
-            <span className="text-green-600 italic">Spring AI Alibaba</span>{" "}
-            Studio
+            <span className="text-green-600 italic">Agentic AI</span> Studio
           </span>
           <a
             href="https://github.com/agentic-spring-ai/agentic-spring-ai/"

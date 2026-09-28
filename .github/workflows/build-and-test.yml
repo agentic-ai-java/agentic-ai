@@ -97,19 +97,19 @@ jobs:
       - uses: ./tools/github-actions/setup-deps
       - run: corepack enable
       - run: corepack prepare pnpm@10.5.1 --activate
-      - run: pnpm --dir agentic-spring-ai-studio/agent-chat-ui install --frozen-lockfile
-      - run: pnpm --dir agentic-spring-ai-studio/agent-chat-ui audit --prod
-      - run: pnpm --dir agentic-spring-ai-studio/agent-chat-ui run format:check
-      - run: pnpm --dir agentic-spring-ai-studio/agent-chat-ui run lint
-      - run: pnpm --dir agentic-spring-ai-studio/agent-chat-ui exec tsc --noEmit
-      - run: pnpm --dir agentic-spring-ai-studio/agent-chat-ui run test
-      - run: pnpm --dir agentic-spring-ai-studio/agent-chat-ui run build:static
+      - run: pnpm --dir agentic-ai-studio/agent-chat-ui install --frozen-lockfile
+      - run: pnpm --dir agentic-ai-studio/agent-chat-ui audit --prod
+      - run: pnpm --dir agentic-ai-studio/agent-chat-ui run format:check
+      - run: pnpm --dir agentic-ai-studio/agent-chat-ui run lint
+      - run: pnpm --dir agentic-ai-studio/agent-chat-ui exec tsc --noEmit
+      - run: pnpm --dir agentic-ai-studio/agent-chat-ui run test
+      - run: pnpm --dir agentic-ai-studio/agent-chat-ui run build:static
       - run: make tools
       - run: make build
       - name: Verify packaged Studio UI
         shell: bash
         run: |
-          studio_jar="$(find agentic-spring-ai-studio/target -maxdepth 1 \
+          studio_jar="$(find agentic-ai-studio/target -maxdepth 1 \
             -name 'agentic-spring-ai-studio-*.jar' \
             ! -name '*-sources.jar' ! -name '*-javadoc.jar' -print -quit)"
           test -n "$studio_jar"

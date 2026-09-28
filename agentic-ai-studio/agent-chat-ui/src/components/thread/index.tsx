@@ -503,8 +503,8 @@ export function Thread() {
                   >
                     <ArrowLeft className="text-muted-foreground h-5 w-5" />
                     <span className="text-xl font-semibold tracking-tight">
-                      <span className="text-green-600">Spring AI Alibaba</span>{" "}
-                      · {selectedAgent}
+                      <span className="text-green-600">Agentic AI</span> ·{" "}
+                      {selectedAgent}
                     </span>
                   </Link>
                 ) : (
@@ -521,8 +521,8 @@ export function Thread() {
                     }}
                   >
                     <span className="text-xl font-semibold tracking-tight">
-                      <span className="text-green-600">Spring AI Alibaba</span>{" "}
-                      Agent Chat
+                      <span className="text-green-600">Agentic AI</span> Agent
+                      Chat
                     </span>
                   </motion.button>
                 )}
@@ -672,7 +672,7 @@ export function Thread() {
                       {/*<SAALogoSVG className="h-8 flex-shrink-0" />*/}
                       <h1 className="text-2xl font-semibold tracking-tight">
                         <span className="text-green-600 italic">
-                          Spring AI Alibaba
+                          Agentic AI
                         </span>{" "}
                         Agent Chat
                       </h1>

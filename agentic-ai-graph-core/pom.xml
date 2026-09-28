@@ -18,13 +18,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.github.agentic-ai</groupId>
-        <artifactId>agentic-ai</artifactId>
+        <groupId>io.github.agentic-spring-ai</groupId>
+        <artifactId>agentic-spring-ai</artifactId>
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>agentic-ai-graph-core</artifactId>
+    <artifactId>agentic-spring-ai-graph-core</artifactId>
     <packaging>jar</packaging>
     <name>Agentic AI Graph Core</name>
     <description>A library for building stateful, multi-agents applications with LLMs</description>

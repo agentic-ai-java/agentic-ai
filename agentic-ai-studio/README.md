@@ -1,6 +1,6 @@
 # Agent Chat UI
 
-Agent Chat UI provides a visualized way for developers to chat with any Spring AI Alibaba developed Agents.
+Agent Chat UI provides a visualized way for developers to chat with any Agentic AI developed Agents.
 
 ## Quick Experience
 
@@ -31,8 +31,8 @@ Just add the following dependency to your agent project:
 
 ```xml
 <dependency>
-	<groupId>io.github.agentic-ai</groupId>
-	<artifactId>agentic-ai-studio</artifactId>
+	<groupId>io.github.agentic-spring-ai</groupId>
+	<artifactId>agentic-spring-ai-studio</artifactId>
 	<version>2.1.0-dev</version>
 </dependency>
 ```
@@ -69,7 +69,7 @@ cd agent-chat-ui
 pnpm install --frozen-lockfile
 pnpm run build:static
 cd ..
-../mvnw -pl :agentic-ai-studio -am -DskipTests package
+../mvnw -pl :agentic-spring-ai-studio -am -DskipTests package
 ```
 
 ### Standalone mode

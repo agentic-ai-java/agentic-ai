@@ -17,13 +17,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.github.agentic-ai</groupId>
-        <artifactId>agentic-ai</artifactId>
+        <groupId>io.github.agentic-spring-ai</groupId>
+        <artifactId>agentic-spring-ai</artifactId>
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>agentic-ai-studio</artifactId>
+    <artifactId>agentic-spring-ai-studio</artifactId>
     <packaging>jar</packaging>
     <name>Agentic AI Studio</name>
     <description>The studio library that is designed to be used inside Agentic AI project.</description>
@@ -53,8 +53,8 @@
         </dependency>
 
         <dependency>
-            <groupId>io.github.agentic-ai</groupId>
-            <artifactId>agentic-ai-agent-framework</artifactId>
+            <groupId>io.github.agentic-spring-ai</groupId>
+            <artifactId>agentic-spring-ai-agent-framework</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
 

@@ -77,10 +77,10 @@ echo "Preparing baseline worktree at ${BASE_COMMIT}"
 git -C "${REPO_ROOT}" worktree add --detach "${BASELINE_WORKTREE}" "${BASE_COMMIT}" >/dev/null
 
 echo "Building baseline public runtime artifacts in isolated Maven repo"
-run_maven_with_retry "${BASELINE_WORKTREE}" -U -DskipTests -pl "${CORE_RUNTIME_MODULES}" -am package
+run_maven_with_retry "${BASELINE_WORKTREE}" -U -Dmaven.test.skip=true -pl "${CORE_RUNTIME_MODULES}" -am package
 
 echo "Building candidate public runtime artifacts in isolated Maven repo"
-run_maven_with_retry "${REPO_ROOT}" -U -DskipTests -pl "${CORE_RUNTIME_MODULES}" -am package
+run_maven_with_retry "${REPO_ROOT}" -U -Dmaven.test.skip=true -pl "${CORE_RUNTIME_MODULES}" -am package
 
 echo "Resolving japicmp ${JAPICMP_VERSION}"
 run_maven_with_retry "${REPO_ROOT}" dependency:get \

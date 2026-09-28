@@ -6,7 +6,7 @@ This file provides guidance for AI assistants working with the Agentic AI codeba
 
 Agentic AI is a production-ready framework for building agents, workflows, and multi-agent applications. It is forked from Spring AI Alibaba and focuses on stateful agent runtime capabilities: graph orchestration, persistence, context engineering, and human-in-the-loop support. It also supports the multi-model integration capabilities provided by Spring AI.
 
-> **Naming:** the project was renamed from *Spring AI Alibaba* in release `2.0.0.0`. The rename is not complete: configuration prefixes (`spring.ai.alibaba.*`), class names (`SpringAiAlibaba*`), the `Saa*` prefix, and metric names still use the legacy identifiers. These are part of the public configuration and API contract - do not rename them without a deprecation cycle.
+> **Naming:** the product display name is *Agentic AI*. Published Maven coordinates (`io.github.agentic-spring-ai:*`), Java packages (`io.github.agentic.spring.ai`), configuration prefixes (`spring.ai.alibaba.*`), class names (`SpringAiAlibaba*`), the `Saa*` prefix, and metric names remain compatibility contracts. Do not rename them without a deprecation cycle.
 
 **Key Features:**
 
@@ -37,7 +37,7 @@ This repository holds the core only. Optional integrations live in separate repo
 - [Extensions](https://github.com/agentic-spring-ai/agentic-spring-ai-extensions) - model and document contracts, A2A Nacos, config Nacos, AgentScope, JDBC/Redis/MongoDB graph persistence, the Docker code executor, and the tool-call sandbox.
 - [Examples](https://github.com/agentic-spring-ai/examples/tree/main/examples) - chatbot, multi-agent, and graph engineering samples.
 
-Since `2.1.0` the core no longer imports the Extensions BOM. Applications that use optional integrations must import both `agentic-ai-bom` and the matching Extensions BOM.
+Since `2.1.0` the core no longer imports the Extensions BOM. Applications that use optional integrations must import both `agentic-spring-ai-bom` and the matching Extensions BOM.
 
 ## Build System
 
@@ -54,7 +54,7 @@ Since `2.1.0` the core no longer imports the Extensions BOM. Applications that u
 ./mvnw -B package -DskipTests=true
 
 # Build a specific module
-./mvnw -pl :agentic-ai-agent-framework -B package -DskipTests=true
+./mvnw -pl :agentic-spring-ai-agent-framework -B package -DskipTests=true
 
 # Clean project
 ./mvnw clean
@@ -141,7 +141,7 @@ The project uses `make` for linting tasks:
 
 1.  **JDK Version**: Project targets JDK 17. Use appropriate language features.
 2.  **Spring Boot**: Uses Spring Boot 4.1.1 with Spring AI 2.0.1. The `jakarta.*` namespace applies throughout; there is no `javax.*` code.
-3.  **Dependencies**: Check `agentic-ai-bom` or parent pom for version management.
+3.  **Dependencies**: Check `agentic-spring-ai-bom` or parent pom for version management.
 4.  **Makefile**: Use the Makefile in the root for project maintenance tasks (linting, license checks).
 5.  **Structure**: When adding new features, prefer creating or updating modules within `agentic-ai-agent-framework` or `spring-boot-starters` depending on the scope.
 

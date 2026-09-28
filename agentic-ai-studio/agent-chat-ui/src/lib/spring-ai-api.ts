@@ -1,4 +1,4 @@
-// Spring AI Alibaba Studio API Client
+// Agentic AI Studio API Client
 
 export const STUDIO_EXECUTION_AUTH_HEADER = "X-Agentic-Studio-Token";
 export const STUDIO_EXECUTION_AUTH_TOKEN_STORAGE_KEY =
