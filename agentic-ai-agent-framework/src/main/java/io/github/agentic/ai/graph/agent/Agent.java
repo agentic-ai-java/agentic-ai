@@ -575,9 +575,8 @@ public abstract class Agent {
 	 * <p>
 	 * This helper method filters the incoming {@link NodeOutput} stream to retain only
 	 * {@link StreamingOutput} instances whose {@link OutputType} is intended to expose
-	 * messages at the Agent API level ({@code AGENT_MODEL_STREAMING},
-	 * {@code AGENT_TOOL_STREAMING}, or {@code AGENT_TOOL_FINISHED}), and whose
-	 * embedded {@link Message} is non-null.
+	 * messages at the Agent API level ({@code AGENT_MODEL_STREAMING} or
+	 * {@code AGENT_TOOL_FINISHED}), and whose embedded {@link Message} is non-null.
 	 * <p>
 	 * All other {@link NodeOutput} types (such as tool or hook intermediate outputs)
 	 * are intentionally filtered out to avoid leaking graph-level implementation
@@ -609,16 +608,13 @@ public abstract class Agent {
 	/**
 	 * Checks whether the given {@link OutputType} indicates a message-type output.
 	 * <p>
-	 * include {@link OutputType#AGENT_MODEL_STREAMING},
-	 * {@link OutputType#AGENT_TOOL_STREAMING}, and
-	 * {@link OutputType#AGENT_TOOL_FINISHED}.
+	 * include {@link OutputType#AGENT_MODEL_STREAMING} and {@link OutputType#AGENT_TOOL_FINISHED}.
 	 *
 	 * @param type the {@link OutputType} to check
 	 * @return true if the output type is a message-type output, false otherwise
 	 */
 	private boolean isMessageOutputType(OutputType type) {
 		return type == OutputType.AGENT_MODEL_STREAMING
-				|| type == OutputType.AGENT_TOOL_STREAMING
 				|| type == OutputType.AGENT_TOOL_FINISHED;
 	}
 
