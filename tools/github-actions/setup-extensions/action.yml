@@ -19,7 +19,7 @@ inputs:
   ref:
     description: Agentic AI Extensions git ref
     required: false
-    default: 77718562c9b23b417407617a814c1fb3719aa87d
+    default: 8f311b8caa584cd415ea338617a79499725f95f0
 runs:
   using: composite
   steps:

@@ -85,7 +85,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: agentic-spring-ai/agentic-spring-ai-extensions
-          ref: 77718562c9b23b417407617a814c1fb3719aa87d
+          ref: 8f311b8caa584cd415ea338617a79499725f95f0
           path: .ci/agentic-spring-ai-extensions
       - run: tools/scripts/verify-extensions-compatibility.sh .ci/agentic-spring-ai-extensions
   build:
