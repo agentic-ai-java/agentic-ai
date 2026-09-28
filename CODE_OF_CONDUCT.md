@@ -24,4 +24,8 @@ The Agentic AI community is committed to providing an open, welcoming, and respe
 
 Maintainers may remind participants, edit or remove inappropriate content, or temporarily or permanently restrict continued participation in the project.
 
-To report a Code of Conduct issue, contact the project maintainers through a private channel. Please include relevant background, links, and context so maintainers can review and respond appropriately.
+To report a Code of Conduct issue, contact one of the project maintainers
+listed in [`pom.xml`](pom.xml) using the public contact information on their
+GitHub profile, and ask to establish a private channel before sharing sensitive
+details. Please include relevant background, links, and context once private
+contact is established so maintainers can review and respond appropriately.

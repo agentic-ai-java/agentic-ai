@@ -18,7 +18,7 @@ For RAG retrieval nodes, declare:
 Then import the Extensions package:
 
 ```java
-import io.github.agentic.ai.graph.node.rag.KnowledgeRetrievalNode;
+import io.github.agentic.spring.ai.graph.node.rag.KnowledgeRetrievalNode;
 ```
 
 For HTTP and document extraction nodes, declare:
@@ -33,8 +33,8 @@ For HTTP and document extraction nodes, declare:
 Then import the Extensions packages:
 
 ```java
-import io.github.agentic.ai.graph.node.network.DocumentExtractorNode;
-import io.github.agentic.ai.graph.node.network.HttpNode;
+import io.github.agentic.spring.ai.graph.node.network.DocumentExtractorNode;
+import io.github.agentic.spring.ai.graph.node.network.HttpNode;
 ```
 
 The Extensions artifacts are plain libraries. They do not add Spring Boot
@@ -49,7 +49,7 @@ must opt in to broader access explicitly.
 
 `DockerCodeExecutor` is provided by the Extensions-owned
 `agentic-spring-ai-code-executor-docker` artifact in package
-`io.github.agentic.ai.graph.node.code.docker`. It disables networking,
+`io.github.agentic.spring.ai.graph.node.code.docker`. It disables networking,
 uses a read-only root filesystem, drops capabilities, and applies CPU, memory,
 swap, PID, and output limits.
 

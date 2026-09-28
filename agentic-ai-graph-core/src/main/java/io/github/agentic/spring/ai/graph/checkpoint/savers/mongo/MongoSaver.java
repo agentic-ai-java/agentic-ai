@@ -76,7 +76,7 @@ public class MongoSaver implements BaseCheckpointSaver {
 	private static final Logger logger = LoggerFactory.getLogger(MongoSaver.class);
 
 	private static final MongoDriverInformation DRIVER_INFO = MongoDriverInformation.builder()
-			.driverName("agentic-ai")
+			.driverName("agentic-spring-ai")
 			.build();
 	private static final String DB_NAME = "check_point_db";
 	private static final String THREAD_META_COLLECTION = "thread_meta";

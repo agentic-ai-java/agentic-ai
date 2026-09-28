@@ -38,7 +38,7 @@ class MongoSaverDriverInfoTest {
 		Field field = MongoSaver.class.getDeclaredField("DRIVER_INFO");
 		field.setAccessible(true);
 		MongoDriverInformation info = (MongoDriverInformation) field.get(null);
-		assertEquals("agentic-ai", info.getDriverNames().get(0));
+		assertEquals("agentic-spring-ai", info.getDriverNames().get(0));
 	}
 
 	@Test
@@ -75,7 +75,7 @@ class MongoSaverDriverInfoTest {
 				.build();
 
 		assertFalse(captured.isEmpty(), "appendMetadata should have been called");
-		assertEquals("agentic-ai", captured.get(0).getDriverNames().get(0));
+		assertEquals("agentic-spring-ai", captured.get(0).getDriverNames().get(0));
 	}
 
 	/** Extends MongoClient with appendMetadata to simulate driver >= 5.6.0. */

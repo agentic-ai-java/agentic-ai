@@ -28,7 +28,7 @@ public class CodeExecutionConfig {
 	 */
 	private String docker;
 
-	private String containerName = "agentic-ai-container";
+	private String containerName = "agentic-spring-ai-container";
 
 	private String dockerHost = "unix:///var/run/docker.sock";
 

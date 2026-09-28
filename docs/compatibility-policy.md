@@ -1,6 +1,6 @@
 # Compatibility Policy
 
-Agentic Spring AI 2.x preserves the current public contract while new
+Agentic AI 2.x preserves the current public contract while new
 enterprise runtime capabilities are designed and released. Compatibility is a
 merge requirement, not a release-only check.
 

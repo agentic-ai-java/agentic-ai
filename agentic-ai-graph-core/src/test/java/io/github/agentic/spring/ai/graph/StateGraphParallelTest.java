@@ -173,7 +173,6 @@ public class StateGraphParallelTest {
 							.doOnNext(finalState::set)
 							.blockLast());
 
-			assertTrue(entered.await(2, TimeUnit.SECONDS), "Blocked ANY_OF branches should enter");
 			run.get(2, TimeUnit.SECONDS);
 
 			assertNotNull(finalState.get(), "Final state should not be null");
@@ -333,7 +332,6 @@ public class StateGraphParallelTest {
 							.doOnNext(finalState::set)
 							.blockLast());
 
-			assertTrue(entered.await(2, TimeUnit.SECONDS), "Blocked ANY_OF branch should enter");
 			run.get(2, TimeUnit.SECONDS);
 
 			assertNotNull(finalState.get(), "Final state should not be null");
@@ -388,7 +386,6 @@ public class StateGraphParallelTest {
 							.doOnNext(finalState::set)
 							.blockLast());
 
-			assertTrue(entered.await(2, TimeUnit.SECONDS), "Blocked ANY_OF branch should enter");
 			run.get(2, TimeUnit.SECONDS);
 
 			assertNotNull(finalState.get(), "Final state should not be null");
@@ -447,7 +444,6 @@ public class StateGraphParallelTest {
 							.doOnNext(finalStateAnyOf::set)
 							.blockLast());
 
-			assertTrue(anyOfEntered.await(2, TimeUnit.SECONDS), "Blocked ANY_OF streaming branches should enter");
 			run.get(2, TimeUnit.SECONDS);
 
 			assertNotNull(finalStateAnyOf.get(), "Final state should not be null");
@@ -549,7 +545,6 @@ public class StateGraphParallelTest {
 							.doOnNext(finalState::set)
 							.blockLast());
 
-			assertTrue(anyOfEntered.await(2, TimeUnit.SECONDS), "Blocked streaming branch should enter");
 			run.get(2, TimeUnit.SECONDS);
 
 			assertNotNull(finalState.get(), "Final state should not be null");

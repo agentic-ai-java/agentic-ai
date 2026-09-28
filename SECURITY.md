@@ -4,7 +4,11 @@
 
 If you discover a security vulnerability or potential risk in Agentic AI, please do not disclose details in a public Issue, Discussion, or Pull Request.
 
-Contact the project maintainers through a private channel and include as much of the following information as possible:
+Contact one of the project maintainers listed in [`pom.xml`](pom.xml) using the
+public contact information on their GitHub profile, and ask to establish a
+private reporting channel. Do not include vulnerability details until the
+maintainer confirms that channel. Once private contact is established, include
+as much of the following information as possible:
 
 - The affected module, version, or commit.
 - The impact and conditions required to trigger the issue.
