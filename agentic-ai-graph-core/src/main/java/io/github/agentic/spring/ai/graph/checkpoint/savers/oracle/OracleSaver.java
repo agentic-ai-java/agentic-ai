@@ -63,8 +63,8 @@ import static java.lang.String.format;
  *
  * <pre>
  *     CREATE TABLE GRAPH_THREAD (
- *          thread_id VARCHAR2(36) PRIMARY KEY,
- *          thread_name VARCHAR(255),
+ *          thread_id VARCHAR2(36) PRIMARY KEY,       -- internal surrogate id, not the user-facing thread id
+ *          thread_name VARCHAR(255),                 -- user-facing thread id accepted by the API
  *          is_released BOOLEAN DEFAULT FALSE NOT NULL
  *     )
  *     CREATE INDEX IDX_GRAPH_THREAD_NAME_RELEASED
@@ -72,7 +72,7 @@ import static java.lang.String.format;
  *
  *     CREATE TABLE GRAPH_CHECKPOINT (
  *          checkpoint_id VARCHAR2(36) PRIMARY KEY,
- *          thread_id VARCHAR2(36) NOT NULL,
+ *          thread_id VARCHAR2(36) NOT NULL,          -- references the internal surrogate id
  *          node_id VARCHAR(255),
  *          next_node_id VARCHAR(255),
  *          state_data JSON NOT NULL,
@@ -85,6 +85,14 @@ import static java.lang.String.format;
  *              ON DELETE CASCADE
  *     )
  * </pre>
+ * </p>
+ * <p>
+ * Thread identity: GRAPH_THREAD.thread_name stores the thread id supplied
+ * through {@code RunnableConfig}, while GRAPH_THREAD.thread_id stores an
+ * internally generated UUID that identifies one activation of that thread
+ * between a release and the next reuse of the same id. This column split is
+ * what allows a released thread id to be reused without orphaning the released
+ * checkpoint history.
  * </p>
  * <p>
  * A builder can be use to create an instance or OracleSaver. The builder
@@ -388,14 +396,14 @@ public class OracleSaver extends AbstractJdbcCheckpointSaver {
 	 * Loads full checkpoint history on demand without retaining it in cache.
 	 */
 	@Override
-	protected LinkedList<Checkpoint> selectCheckpoints(String threadName) throws Exception {
+	protected LinkedList<Checkpoint> selectCheckpoints(String threadId) throws Exception {
 		LinkedList<Checkpoint> checkpoints = new LinkedList<>();
 		ObjectMapper objectMapper = osonObjectMapper();
 		try (Connection connection = dataSource.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(SELECT_CHECKPOINTS)) {
 
 			defineCheckpointColumns(preparedStatement);
-			preparedStatement.setString(1, threadName);
+			preparedStatement.setString(1, threadId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				while (resultSet.next()) {
 					checkpoints.add(readCheckpoint(resultSet, objectMapper));
@@ -409,13 +417,13 @@ public class OracleSaver extends AbstractJdbcCheckpointSaver {
 	}
 
 	@Override
-	protected Optional<Checkpoint> selectLatestCheckpoint(String threadName) throws Exception {
+	protected Optional<Checkpoint> selectLatestCheckpoint(String threadId) throws Exception {
 		ObjectMapper objectMapper = osonObjectMapper();
 		try (Connection connection = dataSource.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(SELECT_LATEST_CHECKPOINT)) {
 
 			defineCheckpointColumns(preparedStatement);
-			preparedStatement.setString(1, threadName);
+			preparedStatement.setString(1, threadId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				if (resultSet.next()) {
 					return Optional.of(readCheckpoint(resultSet, objectMapper));
@@ -429,13 +437,13 @@ public class OracleSaver extends AbstractJdbcCheckpointSaver {
 	}
 
 	@Override
-	protected Optional<Checkpoint> selectCheckpointById(String threadName, String checkpointId) throws Exception {
+	protected Optional<Checkpoint> selectCheckpointById(String threadId, String checkpointId) throws Exception {
 		ObjectMapper objectMapper = osonObjectMapper();
 		try (Connection connection = dataSource.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(SELECT_CHECKPOINT_BY_ID)) {
 
 			defineCheckpointColumns(preparedStatement);
-			preparedStatement.setString(1, threadName);
+			preparedStatement.setString(1, threadId);
 			preparedStatement.setString(2, checkpointId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				if (resultSet.next()) {
@@ -450,7 +458,7 @@ public class OracleSaver extends AbstractJdbcCheckpointSaver {
 	}
 
 	@Override
-	protected void insertCheckpoint(String threadName, Checkpoint checkpoint) throws Exception {
+	protected void insertCheckpoint(String threadId, Checkpoint checkpoint) throws Exception {
 		Connection conn = null;
 
 		try (Connection ignored = conn = dataSource.getConnection()) {
@@ -460,7 +468,7 @@ public class OracleSaver extends AbstractJdbcCheckpointSaver {
 				 PreparedStatement insertCheckpointStatement = conn.prepareStatement(INSERT_CHECKPOINT)) {
 
 				upsertStatement.setString(1, UUID.randomUUID().toString());
-				upsertStatement.setString(2, threadName);
+				upsertStatement.setString(2, threadId);
 				upsertStatement.execute();
 
 				String encodedState = encodeState(checkpoint.getState());
@@ -469,23 +477,23 @@ public class OracleSaver extends AbstractJdbcCheckpointSaver {
 				insertCheckpointStatement.setString(3, checkpoint.getNextNodeId());
 				insertCheckpointStatement.setObject(4, encodedState, OracleType.JSON);
 				insertCheckpointStatement.setString(5, stateSerializer.contentType());
-				insertCheckpointStatement.setString(6, threadName);
+				insertCheckpointStatement.setString(6, threadId);
 
 				insertCheckpointStatement.execute();
 			}
 
 			conn.commit();
-			log.debug("Checkpoint {} for thread {} inserted successfully.", checkpoint.getId(), threadName);
+			log.debug("Checkpoint {} for thread {} inserted successfully.", checkpoint.getId(), threadId);
 		}
 		catch (SQLException | IOException ex) {
-			log.error("Error inserting checkpoint with id {} in thread {}", checkpoint.getId(), threadName, ex);
-			rollback(conn, checkpoint, threadName);
+			log.error("Error inserting checkpoint with id {} in thread {}", checkpoint.getId(), threadId, ex);
+			rollback(conn, checkpoint, threadId);
 			throw new Exception("Unable to insert checkpoint", ex);
 		}
 	}
 
 	@Override
-	protected void updateCheckpoint(String threadName, String checkpointId, Checkpoint checkpoint) throws Exception {
+	protected void updateCheckpoint(String threadId, String checkpointId, Checkpoint checkpoint) throws Exception {
 		Connection conn = null;
 
 		try (Connection ignored = conn = dataSource.getConnection()) {
@@ -499,7 +507,7 @@ public class OracleSaver extends AbstractJdbcCheckpointSaver {
 				preparedStatement.setObject(4, encodedState, OracleType.JSON);
 				preparedStatement.setString(5, stateSerializer.contentType());
 				preparedStatement.setString(6, checkpointId);
-				preparedStatement.setString(7, threadName);
+				preparedStatement.setString(7, threadId);
 				int rowsAffected = preparedStatement.executeUpdate();
 				if (rowsAffected == 0) {
 					conn.rollback();
@@ -508,17 +516,17 @@ public class OracleSaver extends AbstractJdbcCheckpointSaver {
 			}
 
 			conn.commit();
-			log.debug("Checkpoint with id {} for thread {} updated successfully.", checkpoint.getId(), threadName);
+			log.debug("Checkpoint with id {} for thread {} updated successfully.", checkpoint.getId(), threadId);
 		}
 		catch (SQLException | IOException ex) {
-			log.error("Error updating checkpoint with id {} in thread {}", checkpoint.getId(), threadName, ex);
-			rollback(conn, checkpoint, threadName);
+			log.error("Error updating checkpoint with id {} in thread {}", checkpoint.getId(), threadId, ex);
+			rollback(conn, checkpoint, threadId);
 			throw new Exception("Unable to update checkpoint", ex);
 		}
 	}
 
 	@Override
-	protected void deleteCheckpoints(String threadName, Collection<String> checkpointIds) throws Exception {
+	protected void deleteCheckpoints(String threadId, Collection<String> checkpointIds) throws Exception {
 		if (checkpointIds.isEmpty()) {
 			return;
 		}
@@ -529,7 +537,7 @@ public class OracleSaver extends AbstractJdbcCheckpointSaver {
 			for (String checkpointId : checkpointIds) {
 				preparedStatement.setString(index++, checkpointId);
 			}
-			preparedStatement.setString(index, threadName);
+			preparedStatement.setString(index, threadId);
 			preparedStatement.executeUpdate();
 		}
 		catch (SQLException ex) {
@@ -538,29 +546,29 @@ public class OracleSaver extends AbstractJdbcCheckpointSaver {
 	}
 
 	@Override
-	protected void releaseThread(String threadName) throws Exception {
+	protected void releaseThread(String threadId) throws Exception {
 		Connection conn = null;
 
 		try (Connection ignored = conn = dataSource.getConnection()) {
 			conn.setAutoCommit(false);
 
 			try (PreparedStatement preparedStatement = conn.prepareStatement(RELEASE_THREAD)) {
-				preparedStatement.setString(1, threadName);
+				preparedStatement.setString(1, threadId);
 				int rowsAffected = preparedStatement.executeUpdate();
 
 				if (rowsAffected == 0) {
 					conn.rollback();
 					throw new IllegalStateException(
-							format("Thread '%s' not found or already released", threadName));
+							format("Thread '%s' not found or already released", threadId));
 				}
 			}
 
 			conn.commit();
-			log.debug("Thread {} released successfully.", threadName);
+			log.debug("Thread {} released successfully.", threadId);
 		}
 		catch (SQLException ex) {
-			log.error("Error releasing thread {}", threadName, ex);
-			rollback(conn, threadName);
+			log.error("Error releasing thread {}", threadId, ex);
+			rollback(conn, threadId);
 			throw new Exception("Unable to release checkpoint", ex);
 		}
 	}

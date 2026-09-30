@@ -53,8 +53,8 @@ import static java.util.Objects.requireNonNull;
  *
  * <pre>
  *     CREATE TABLE GRAPH_THREAD (
- *          thread_id VARCHAR(36) PRIMARY KEY,
- *          thread_name VARCHAR(255),
+ *          thread_id VARCHAR(36) PRIMARY KEY,        -- internal surrogate id, not the user-facing thread id
+ *          thread_name VARCHAR(255),                 -- user-facing thread id accepted by the API
  *          is_released BOOLEAN DEFAULT FALSE NOT NULL,
  *          active_thread_name VARCHAR(255) GENERATED ALWAYS AS (
  *              CASE WHEN is_released = FALSE THEN thread_name ELSE NULL END
@@ -66,7 +66,7 @@ import static java.util.Objects.requireNonNull;
  *     CREATE TABLE GRAPH_CHECKPOINT (
  *          checkpoint_seq BIGINT NOT NULL AUTO_INCREMENT UNIQUE,
  *          checkpoint_id VARCHAR(36) PRIMARY KEY,
- *          thread_id VARCHAR(36) NOT NULL,
+ *          thread_id VARCHAR(36) NOT NULL,           -- references the internal surrogate id
  *          node_id VARCHAR(255),
  *          next_node_id VARCHAR(255),
  *          state_data JSON NOT NULL,
@@ -78,6 +78,14 @@ import static java.util.Objects.requireNonNull;
  *              ON DELETE CASCADE
  *     )
  * </pre>
+ * </p>
+ * <p>
+ * Thread identity: GRAPH_THREAD.thread_name stores the thread id supplied
+ * through {@code RunnableConfig}, while GRAPH_THREAD.thread_id stores an
+ * internally generated UUID that identifies one activation of that thread
+ * between a release and the next reuse of the same id. This column split is
+ * what allows a released thread id to be reused without orphaning the released
+ * checkpoint history.
  * </p>
  * <p>
  * A builder can be used to create an instance of MysqlSaver. The builder
@@ -428,12 +436,12 @@ public class MysqlSaver extends AbstractJdbcCheckpointSaver {
 	 * Loads full checkpoint history on demand without retaining it in cache.
 	 */
 	@Override
-	protected LinkedList<Checkpoint> selectCheckpoints(String threadName) throws Exception {
+	protected LinkedList<Checkpoint> selectCheckpoints(String threadId) throws Exception {
 		LinkedList<Checkpoint> checkpoints = new LinkedList<>();
 		try (Connection connection = dataSource.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(SELECT_CHECKPOINTS)) {
 
-			preparedStatement.setString(1, threadName);
+			preparedStatement.setString(1, threadId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				while (resultSet.next()) {
 					checkpoints.add(readCheckpoint(resultSet));
@@ -447,11 +455,11 @@ public class MysqlSaver extends AbstractJdbcCheckpointSaver {
 	}
 
 	@Override
-	protected Optional<Checkpoint> selectLatestCheckpoint(String threadName) throws Exception {
+	protected Optional<Checkpoint> selectLatestCheckpoint(String threadId) throws Exception {
 		try (Connection connection = dataSource.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(SELECT_LATEST_CHECKPOINT)) {
 
-			preparedStatement.setString(1, threadName);
+			preparedStatement.setString(1, threadId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				if (resultSet.next()) {
 					return Optional.of(readCheckpoint(resultSet));
@@ -465,11 +473,11 @@ public class MysqlSaver extends AbstractJdbcCheckpointSaver {
 	}
 
 	@Override
-	protected Optional<Checkpoint> selectCheckpointById(String threadName, String checkpointId) throws Exception {
+	protected Optional<Checkpoint> selectCheckpointById(String threadId, String checkpointId) throws Exception {
 		try (Connection connection = dataSource.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(SELECT_CHECKPOINT_BY_ID)) {
 
-			preparedStatement.setString(1, threadName);
+			preparedStatement.setString(1, threadId);
 			preparedStatement.setString(2, checkpointId);
 			try (ResultSet resultSet = preparedStatement.executeQuery()) {
 				if (resultSet.next()) {
@@ -484,7 +492,7 @@ public class MysqlSaver extends AbstractJdbcCheckpointSaver {
 	}
 
 	@Override
-	protected void insertCheckpoint(String threadName, Checkpoint checkpoint) throws Exception {
+	protected void insertCheckpoint(String threadId, Checkpoint checkpoint) throws Exception {
 		Connection conn = null;
 		try (Connection ignored = conn = dataSource.getConnection()) {
 			conn.setAutoCommit(false);
@@ -493,29 +501,29 @@ public class MysqlSaver extends AbstractJdbcCheckpointSaver {
 					PreparedStatement insertCheckpointStatement = conn.prepareStatement(INSERT_CHECKPOINT)) {
 
 				upsertStatement.setString(1, UUID.randomUUID().toString());
-				upsertStatement.setString(2, threadName);
+				upsertStatement.setString(2, threadId);
 				upsertStatement.execute();
 
 				insertCheckpointStatement.setString(1, checkpoint.getId());
 				insertCheckpointStatement.setString(2, checkpoint.getNodeId());
 				insertCheckpointStatement.setString(3, checkpoint.getNextNodeId());
 				insertCheckpointStatement.setString(4, encodeState(checkpoint.getState()));
-				insertCheckpointStatement.setString(5, threadName);
+				insertCheckpointStatement.setString(5, threadId);
 				insertCheckpointStatement.execute();
 			}
 
 			conn.commit();
-			log.debug("Checkpoint {} for thread {} inserted successfully.", checkpoint.getId(), threadName);
+			log.debug("Checkpoint {} for thread {} inserted successfully.", checkpoint.getId(), threadId);
 		}
 		catch (SQLException | IOException ex) {
-			log.error("Error inserting checkpoint with id {} in thread {}", checkpoint.getId(), threadName, ex);
-			rollback(conn, checkpoint, threadName);
+			log.error("Error inserting checkpoint with id {} in thread {}", checkpoint.getId(), threadId, ex);
+			rollback(conn, checkpoint, threadId);
 			throw new Exception("Unable to insert checkpoint", ex);
 		}
 	}
 
 	@Override
-	protected void updateCheckpoint(String threadName, String checkpointId, Checkpoint checkpoint) throws Exception {
+	protected void updateCheckpoint(String threadId, String checkpointId, Checkpoint checkpoint) throws Exception {
 		Connection conn = null;
 		try (Connection ignored = conn = dataSource.getConnection()) {
 			conn.setAutoCommit(false);
@@ -525,7 +533,7 @@ public class MysqlSaver extends AbstractJdbcCheckpointSaver {
 				preparedStatement.setString(2, checkpoint.getNodeId());
 				preparedStatement.setString(3, checkpoint.getNextNodeId());
 				preparedStatement.setString(4, encodeState(checkpoint.getState()));
-				preparedStatement.setString(5, threadName);
+				preparedStatement.setString(5, threadId);
 				preparedStatement.setString(6, checkpointId);
 				int rowsAffected = preparedStatement.executeUpdate();
 				if (rowsAffected == 0) {
@@ -535,24 +543,24 @@ public class MysqlSaver extends AbstractJdbcCheckpointSaver {
 			}
 
 			conn.commit();
-			log.debug("Checkpoint with id {} for thread {} updated successfully.", checkpoint.getId(), threadName);
+			log.debug("Checkpoint with id {} for thread {} updated successfully.", checkpoint.getId(), threadId);
 		}
 		catch (SQLException | IOException ex) {
-			log.error("Error updating checkpoint with id {} in thread {}", checkpoint.getId(), threadName, ex);
-			rollback(conn, checkpoint, threadName);
+			log.error("Error updating checkpoint with id {} in thread {}", checkpoint.getId(), threadId, ex);
+			rollback(conn, checkpoint, threadId);
 			throw new Exception("Unable to update checkpoint", ex);
 		}
 	}
 
 	@Override
-	protected void deleteCheckpoints(String threadName, Collection<String> checkpointIds) throws Exception {
+	protected void deleteCheckpoints(String threadId, Collection<String> checkpointIds) throws Exception {
 		if (checkpointIds.isEmpty()) {
 			return;
 		}
 		try (Connection connection = dataSource.getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(
 						DELETE_CHECKPOINTS.formatted(String.join(", ", Collections.nCopies(checkpointIds.size(), "?"))))) {
-			preparedStatement.setString(1, threadName);
+			preparedStatement.setString(1, threadId);
 			int index = 2;
 			for (String checkpointId : checkpointIds) {
 				preparedStatement.setString(index++, checkpointId);
@@ -565,26 +573,26 @@ public class MysqlSaver extends AbstractJdbcCheckpointSaver {
 	}
 
 	@Override
-	protected void releaseThread(String threadName) throws Exception {
+	protected void releaseThread(String threadId) throws Exception {
 		Connection conn = null;
 		try (Connection ignored = conn = dataSource.getConnection()) {
 			conn.setAutoCommit(false);
 
 			try (PreparedStatement preparedStatement = conn.prepareStatement(RELEASE_THREAD)) {
-				preparedStatement.setString(1, threadName);
+				preparedStatement.setString(1, threadId);
 				int rowsAffected = preparedStatement.executeUpdate();
 				if (rowsAffected == 0) {
 					conn.rollback();
-					throw new IllegalStateException(format("Thread '%s' not found or already released", threadName));
+					throw new IllegalStateException(format("Thread '%s' not found or already released", threadId));
 				}
 			}
 
 			conn.commit();
-			log.debug("Thread {} released successfully.", threadName);
+			log.debug("Thread {} released successfully.", threadId);
 		}
 		catch (SQLException ex) {
-			log.error("Error releasing thread {}", threadName, ex);
-			rollback(conn, threadName);
+			log.error("Error releasing thread {}", threadId, ex);
+			rollback(conn, threadId);
 			throw new Exception("Unable to release checkpoint", ex);
 		}
 	}

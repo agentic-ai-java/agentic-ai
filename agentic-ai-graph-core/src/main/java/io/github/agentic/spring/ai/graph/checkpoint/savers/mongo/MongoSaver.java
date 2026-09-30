@@ -63,6 +63,16 @@ import static java.lang.String.format;
 /**
  * MongoDB checkpoint saver.
  * <p>
+ * Thread identity: every operation is keyed on the user-facing thread id
+ * resolved from {@code RunnableConfig}. That id is used verbatim as the
+ * {@code _id} of the {@code thread_meta} document
+ * ({@code mongo:thread:meta:<user-thread-id>}) and stored in its
+ * {@code thread_name} field, while the {@code thread_id} field holds an
+ * internally generated UUID identifying one activation of the thread between a
+ * release and the next reuse of the same id. Checkpoint documents are stored
+ * under that internal id so a released thread id can be reused without
+ * orphaning the released checkpoint history.
+ * <p>
  * Replacement: add artifact
  * {@code io.github.agentic-spring-ai:agentic-spring-ai-graph-persistence-mongodb}
  * and use {@code io.github.agentic.spring.ai.graph.persistence.mongodb.MongoSaver}.
@@ -155,20 +165,20 @@ public class MongoSaver implements BaseCheckpointSaver {
 	}
 
 	/**
-	 * Gets or creates a thread_id for the given thread_name.
-	 * If an active thread exists, returns its thread_id.
-	 * If no active thread exists or the thread is released, creates a new thread_id.
+	 * Returns the internal surrogate thread id of the active entry for the given
+	 * user-facing thread id, creating a new one when no active entry exists or
+	 * the previous one was released.
 	 *
 	 * This method uses atomic operations to prevent race conditions in concurrent scenarios.
 	 * Uses findOneAndUpdate with conditional logic to ensure thread-safe creation.
 	 *
-	 * @param threadName the thread name
+	 * @param threadId the user-facing thread id
 	 * @param clientSession the MongoDB client session for transaction
-	 * @return the thread_id (UUID string)
+	 * @return the internal thread id (UUID string)
 	 */
-	private String getOrCreateThreadId(String threadName, ClientSession clientSession) {
+	private String getOrCreateThreadId(String threadId, ClientSession clientSession) {
 		MongoCollection<Document> threadMetaCollection = database.getCollection(THREAD_META_COLLECTION);
-		String metaId = THREAD_META_PREFIX + threadName;
+		String metaId = THREAD_META_PREFIX + threadId;
 
 		// Step 1: Try to atomically get an active thread
 		// Filter: _id matches AND is_released != true
@@ -187,10 +197,10 @@ public class MongoSaver implements BaseCheckpointSaver {
 		);
 
 		if (existingDoc != null) {
-			String threadId = existingDoc.getString(FIELD_THREAD_ID);
-			if (threadId != null) {
-				// Active thread exists, return its thread_id
-				return threadId;
+			String persistedThreadId = existingDoc.getString(FIELD_THREAD_ID);
+			if (persistedThreadId != null) {
+				// Active thread exists, return its internal thread id
+				return persistedThreadId;
 			}
 		}
 
@@ -271,53 +281,57 @@ public class MongoSaver implements BaseCheckpointSaver {
 	}
 
 	/**
-	 * Gets the active thread_id for the given thread_name.
+	 * Gets the internal surrogate thread id of the active entry for the given
+	 * user-facing thread id.
 	 * Returns null if no active thread exists.
 	 *
-	 * @param threadName the thread name
+	 * @param threadId the user-facing thread id
 	 * @param clientSession the MongoDB client session for transaction
-	 * @return the active thread_id, or null if not found
+	 * @return the active internal thread id, or null if not found
 	 */
-	private String getActiveThreadId(String threadName, ClientSession clientSession) {
+	private String getActiveThreadId(String threadId, ClientSession clientSession) {
 		MongoCollection<Document> threadMetaCollection = database.getCollection(THREAD_META_COLLECTION);
-		String metaId = THREAD_META_PREFIX + threadName;
+		String metaId = THREAD_META_PREFIX + threadId;
 
 		Document metaDoc = threadMetaCollection.find(clientSession, new BasicDBObject("_id", metaId)).first();
 
 		if (metaDoc != null) {
-			String threadId = metaDoc.getString(FIELD_THREAD_ID);
+			String persistedThreadId = metaDoc.getString(FIELD_THREAD_ID);
 			Boolean isReleased = metaDoc.getBoolean(FIELD_IS_RELEASED, false);
 
-			if (threadId != null && !Boolean.TRUE.equals(isReleased)) {
-				return threadId;
+			if (persistedThreadId != null && !Boolean.TRUE.equals(isReleased)) {
+				return persistedThreadId;
 			}
 		}
 
 		return null; // No active thread exists
 	}
 
-	private String threadName(RunnableConfig config) {
+	/**
+	 * Resolves the user-facing thread id every saver operation is keyed on.
+	 */
+	private String threadId(RunnableConfig config) {
 		return checkpointThreadId(config);
 	}
 
 	@Override
 	public Collection<Checkpoint> list(RunnableConfig config) {
-		String threadName = threadName(config);
+		String threadId = threadId(config);
 		ClientSession clientSession = this.client
 				.startSession(ClientSessionOptions.builder().defaultTransactionOptions(txnOptions).build());
 		clientSession.startTransaction();
 		List<Checkpoint> checkpoints = null;
 		try {
-			// Get active thread_id for the thread_name
-			String threadId = getActiveThreadId(threadName, clientSession);
-			if (threadId == null) {
+			// Get the internal thread id of the active entry
+			String persistedThreadId = getActiveThreadId(threadId, clientSession);
+			if (persistedThreadId == null) {
 				clientSession.commitTransaction();
 				return Collections.emptyList();
 			}
 
-			// Use thread_id to query checkpoints
+			// Use the internal thread id to query checkpoints
 			MongoCollection<Document> collection = database.getCollection(CHECKPOINT_COLLECTION);
-			String checkpointId = CHECKPOINT_PREFIX + threadId;
+			String checkpointId = CHECKPOINT_PREFIX + persistedThreadId;
 			Document document = collection.find(clientSession, new BasicDBObject("_id", checkpointId)).first();
 			if (document == null) {
 				clientSession.commitTransaction();
@@ -339,23 +353,23 @@ public class MongoSaver implements BaseCheckpointSaver {
 
 	@Override
 	public Optional<Checkpoint> get(RunnableConfig config) {
-		String threadName = threadName(config);
+		String threadId = threadId(config);
 		ClientSession clientSession = this.client
 				.startSession(ClientSessionOptions.builder().defaultTransactionOptions(txnOptions).build());
 		LinkedList<Checkpoint> checkpoints = null;
 		try {
 			clientSession.startTransaction();
 
-			// Get active thread_id for the thread_name
-			String threadId = getActiveThreadId(threadName, clientSession);
-			if (threadId == null) {
+			// Get the internal thread id of the active entry
+			String persistedThreadId = getActiveThreadId(threadId, clientSession);
+			if (persistedThreadId == null) {
 				clientSession.commitTransaction();
 				return Optional.empty();
 			}
 
-			// Use thread_id to query checkpoints
+			// Use the internal thread id to query checkpoints
 			MongoCollection<Document> collection = database.getCollection(CHECKPOINT_COLLECTION);
-			String checkpointId = CHECKPOINT_PREFIX + threadId;
+			String checkpointId = CHECKPOINT_PREFIX + persistedThreadId;
 			Document document = collection.find(clientSession, new BasicDBObject("_id", checkpointId)).first();
 			if (document == null) {
 				clientSession.commitTransaction();
@@ -385,17 +399,17 @@ public class MongoSaver implements BaseCheckpointSaver {
 
 	@Override
 	public RunnableConfig put(RunnableConfig config, Checkpoint checkpoint) throws Exception {
-		String threadName = threadName(config);
+		String threadId = threadId(config);
 		ClientSession clientSession = this.client
 				.startSession(ClientSessionOptions.builder().defaultTransactionOptions(txnOptions).build());
 		clientSession.startTransaction();
 		try {
-			// Get or create thread_id
-			String threadId = getOrCreateThreadId(threadName, clientSession);
+			// Get or create the internal thread id
+			String persistedThreadId = getOrCreateThreadId(threadId, clientSession);
 
-			// Use thread_id as key for checkpoint storage
+			// Use the internal thread id as key for checkpoint storage
 			MongoCollection<Document> collection = database.getCollection(CHECKPOINT_COLLECTION);
-			String checkpointDocId = CHECKPOINT_PREFIX + threadId;
+			String checkpointDocId = CHECKPOINT_PREFIX + persistedThreadId;
 			Document document = collection.find(clientSession, new BasicDBObject("_id", checkpointDocId)).first();
 			LinkedList<Checkpoint> checkpointLinkedList = null;
 
@@ -449,24 +463,24 @@ public class MongoSaver implements BaseCheckpointSaver {
 
 	@Override
 	public Tag release(RunnableConfig config) throws Exception {
-		String threadName = threadName(config);
+		String threadId = threadId(config);
 		ClientSession clientSession = this.client
 				.startSession(ClientSessionOptions.builder().defaultTransactionOptions(txnOptions).build());
 		clientSession.startTransaction();
 		try {
 			MongoCollection<Document> threadMetaCollection = database.getCollection(THREAD_META_COLLECTION);
-			String metaId = THREAD_META_PREFIX + threadName;
+			String metaId = THREAD_META_PREFIX + threadId;
 
 			Document metaDoc = threadMetaCollection.find(clientSession, new BasicDBObject("_id", metaId)).first();
 			if (metaDoc == null) {
 				clientSession.abortTransaction();
-				throw new IllegalStateException("Thread not found: " + threadName);
+				throw new IllegalStateException("Thread not found: " + threadId);
 			}
 
-			String threadId = metaDoc.getString(FIELD_THREAD_ID);
-			if (threadId == null) {
+			String persistedThreadId = metaDoc.getString(FIELD_THREAD_ID);
+			if (persistedThreadId == null) {
 				clientSession.abortTransaction();
-				throw new IllegalStateException("Thread not found: " + threadName);
+				throw new IllegalStateException("Thread not found: " + threadId);
 			}
 
 			// Mark thread as released atomically
@@ -484,12 +498,12 @@ public class MongoSaver implements BaseCheckpointSaver {
 			if (updatedDoc == null) {
 				// Thread was already released or doesn't exist
 				clientSession.abortTransaction();
-				throw new IllegalStateException("Thread is not active or already released: " + threadName);
+				throw new IllegalStateException("Thread is not active or already released: " + threadId);
 			}
 
-			// Get checkpoints for Tag (using thread_id)
+			// Get checkpoints for Tag (using the internal thread id)
 			MongoCollection<Document> checkpointCollection = database.getCollection(CHECKPOINT_COLLECTION);
-			String checkpointDocId = CHECKPOINT_PREFIX + threadId;
+			String checkpointDocId = CHECKPOINT_PREFIX + persistedThreadId;
 			Document checkpointDoc = checkpointCollection.find(clientSession, new BasicDBObject("_id", checkpointDocId))
 					.first();
 
@@ -502,7 +516,7 @@ public class MongoSaver implements BaseCheckpointSaver {
 			}
 
 			clientSession.commitTransaction();
-			return new Tag(threadName, checkpoints);
+			return new Tag(threadId, checkpoints);
 
 		}
 		catch (Exception e) {

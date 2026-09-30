@@ -49,6 +49,15 @@ import static java.util.Objects.requireNonNull;
 /**
  * The type Redis saver.
  * <p>
+ * Thread identity: every operation is keyed on the user-facing thread id
+ * resolved from {@code RunnableConfig}. That id is used verbatim in the
+ * {@code graph:thread:meta:<user-thread-id>} key and stored in the
+ * {@code thread_name} field of the reverse mapping, while the {@code thread_id}
+ * hash field holds an internally generated UUID identifying one activation of
+ * the thread between a release and the next reuse of the same id. Checkpoint
+ * buckets are stored under that internal id so a released thread id can be
+ * reused without orphaning the released checkpoint history.
+ * <p>
  * Replacement: add artifact
  * {@code io.github.agentic-spring-ai:agentic-spring-ai-graph-persistence-redis}
  * and use {@code io.github.agentic.spring.ai.graph.persistence.redis.RedisSaver}.
@@ -131,27 +140,27 @@ public class RedisSaver implements BaseCheckpointSaver {
 	}
 
 	/**
-	 * Gets or creates a thread_id for the given thread_name.
-	 * If an active thread exists, returns its thread_id.
-	 * If no active thread exists or the thread is released, creates a new thread_id.
+	 * Returns the internal surrogate thread id of the active entry for the given
+	 * user-facing thread id, creating a new one when no active entry exists or
+	 * the previous one was released.
 	 *
-	 * @param threadName the thread name
-	 * @return the thread_id (UUID string)
+	 * @param threadId the user-facing thread id
+	 * @return the internal thread id (UUID string)
 	 */
-	private String getOrCreateThreadId(String threadName) {
-		String metaKey = THREAD_META_PREFIX + threadName;
+	private String getOrCreateThreadId(String threadId) {
+		String metaKey = THREAD_META_PREFIX + threadId;
 		RMap<String, String> meta = redisson.getMap(metaKey);
 
 		// Check if an active thread exists
-		String threadId = meta.get(FIELD_THREAD_ID);
+		String persistedThreadId = meta.get(FIELD_THREAD_ID);
 		String isReleased = meta.get(FIELD_IS_RELEASED);
 
-		if (threadId != null && !"true".equals(isReleased)) {
-			// Active thread exists, return its thread_id
-			return threadId;
+		if (persistedThreadId != null && !"true".equals(isReleased)) {
+			// Active thread exists, return its internal thread id
+			return persistedThreadId;
 		}
 
-		// No active thread exists or thread is released, create a new thread_id
+		// No active thread exists or thread is released, create a new internal thread id
 		String newThreadId = UUID.randomUUID().toString();
 		meta.put(FIELD_THREAD_ID, newThreadId);
 		meta.put(FIELD_IS_RELEASED, "false");
@@ -162,7 +171,7 @@ public class RedisSaver implements BaseCheckpointSaver {
 		// Set reverse mapping
 		String reverseKey = THREAD_REVERSE_PREFIX + newThreadId;
 		RMap<String, String> reverse = redisson.getMap(reverseKey);
-		reverse.put(FIELD_THREAD_NAME, threadName);
+		reverse.put(FIELD_THREAD_NAME, threadId);
 		reverse.put(FIELD_IS_RELEASED, "false");
 		if (ttl > 0) {
 			reverse.expire(java.time.Duration.ofMillis(ttlUnit.toMillis(ttl)));
@@ -172,34 +181,38 @@ public class RedisSaver implements BaseCheckpointSaver {
 	}
 
 	/**
-	 * Gets the active thread_id for the given thread_name.
+	 * Gets the internal surrogate thread id of the active entry for the given
+	 * user-facing thread id.
 	 * Returns null if no active thread exists.
 	 *
-	 * @param threadName the thread name
-	 * @return the active thread_id, or null if not found
+	 * @param threadId the user-facing thread id
+	 * @return the active internal thread id, or null if not found
 	 */
-	private String getActiveThreadId(String threadName) {
-		String metaKey = THREAD_META_PREFIX + threadName;
+	private String getActiveThreadId(String threadId) {
+		String metaKey = THREAD_META_PREFIX + threadId;
 		RMap<String, String> meta = redisson.getMap(metaKey);
 
-		String threadId = meta.get(FIELD_THREAD_ID);
+		String persistedThreadId = meta.get(FIELD_THREAD_ID);
 		String isReleased = meta.get(FIELD_IS_RELEASED);
 
-		if (threadId != null && !"true".equals(isReleased)) {
-			return threadId;
+		if (persistedThreadId != null && !"true".equals(isReleased)) {
+			return persistedThreadId;
 		}
 
 		return null; // No active thread exists
 	}
 
-	private String threadName(RunnableConfig config) {
+	/**
+	 * Resolves the user-facing thread id every saver operation is keyed on.
+	 */
+	private String threadId(RunnableConfig config) {
 		return checkpointThreadId(config);
 	}
 
 	@Override
 	public Collection<Checkpoint> list(RunnableConfig config) {
-		String threadName = threadName(config);
-		RLock lock = redisson.getLock(LOCK_PREFIX + threadName);
+		String threadId = threadId(config);
+		RLock lock = redisson.getLock(LOCK_PREFIX + threadId);
 		boolean tryLock = false;
 		try {
 			// 500ms timeout for read operations (list)
@@ -208,14 +221,14 @@ public class RedisSaver implements BaseCheckpointSaver {
 				return List.of();
 			}
 
-			// Get active thread_id for the thread_name
-			String threadId = getActiveThreadId(threadName);
-			if (threadId == null) {
+			// Get the internal thread id of the active entry
+			String persistedThreadId = getActiveThreadId(threadId);
+			if (persistedThreadId == null) {
 				return List.of();
 			}
 
-			// Use thread_id to query checkpoints
-			RBucket<String> bucket = redisson.getBucket(CHECKPOINT_PREFIX + threadId);
+			// Use the internal thread id to query checkpoints
+			RBucket<String> bucket = redisson.getBucket(CHECKPOINT_PREFIX + persistedThreadId);
 			String content = bucket.get();
 			return deserializeCheckpoints(content);
 
@@ -235,8 +248,8 @@ public class RedisSaver implements BaseCheckpointSaver {
 
 	@Override
 	public Optional<Checkpoint> get(RunnableConfig config) {
-		String threadName = threadName(config);
-		RLock lock = redisson.getLock(LOCK_PREFIX + threadName);
+		String threadId = threadId(config);
+		RLock lock = redisson.getLock(LOCK_PREFIX + threadId);
 		boolean tryLock = false;
 		try {
 			// 500ms timeout for read operations (get)
@@ -245,14 +258,14 @@ public class RedisSaver implements BaseCheckpointSaver {
 				return Optional.empty();
 			}
 
-			// Get active thread_id for the thread_name
-			String threadId = getActiveThreadId(threadName);
-			if (threadId == null) {
+			// Get the internal thread id of the active entry
+			String persistedThreadId = getActiveThreadId(threadId);
+			if (persistedThreadId == null) {
 				return Optional.empty();
 			}
 
-			// Use thread_id to query checkpoints
-			RBucket<String> bucket = redisson.getBucket(CHECKPOINT_PREFIX + threadId);
+			// Use the internal thread id to query checkpoints
+			RBucket<String> bucket = redisson.getBucket(CHECKPOINT_PREFIX + persistedThreadId);
 			String content = bucket.get();
 			LinkedList<Checkpoint> checkpoints = deserializeCheckpoints(content);
 
@@ -280,21 +293,21 @@ public class RedisSaver implements BaseCheckpointSaver {
 
 	@Override
 	public RunnableConfig put(RunnableConfig config, Checkpoint checkpoint) throws Exception {
-		String threadName = threadName(config);
-		RLock lock = redisson.getLock(LOCK_PREFIX + threadName);
+		String threadId = threadId(config);
+		RLock lock = redisson.getLock(LOCK_PREFIX + threadId);
 		boolean tryLock = false;
 		try {
 			// 3 seconds timeout for write operations (put) - longer timeout for concurrent scenarios
 			tryLock = lock.tryLock(3, TimeUnit.SECONDS);
 			if (!tryLock) {
-				throw new RuntimeException("Failed to acquire lock for thread: " + threadName);
+				throw new RuntimeException("Failed to acquire lock for thread: " + threadId);
 			}
 
-			// Get or create thread_id
-			String threadId = getOrCreateThreadId(threadName);
+			// Get or create the internal thread id
+			String persistedThreadId = getOrCreateThreadId(threadId);
 
-			// Use thread_id as key for checkpoint storage
-			RBucket<String> bucket = redisson.getBucket(CHECKPOINT_PREFIX + threadId);
+			// Use the internal thread id as key for checkpoint storage
+			RBucket<String> bucket = redisson.getBucket(CHECKPOINT_PREFIX + persistedThreadId);
 			String content = bucket.get();
 			LinkedList<Checkpoint> checkpoints = deserializeCheckpoints(content);
 
@@ -335,41 +348,41 @@ public class RedisSaver implements BaseCheckpointSaver {
 
 	@Override
 	public Tag release(RunnableConfig config) throws Exception {
-		String threadName = threadName(config);
-		RLock lock = redisson.getLock(LOCK_PREFIX + threadName);
+		String threadId = threadId(config);
+		RLock lock = redisson.getLock(LOCK_PREFIX + threadId);
 		boolean tryLock = false;
 		try {
 			// 3 seconds timeout for write operations (release) - longer timeout for concurrent scenarios
 			tryLock = lock.tryLock(3, TimeUnit.SECONDS);
 			if (!tryLock) {
-				throw new RuntimeException("Failed to acquire lock for thread: " + threadName);
+				throw new RuntimeException("Failed to acquire lock for thread: " + threadId);
 			}
 
-			String metaKey = THREAD_META_PREFIX + threadName;
+			String metaKey = THREAD_META_PREFIX + threadId;
 			RMap<String, String> meta = redisson.getMap(metaKey);
 
-			String threadId = meta.get(FIELD_THREAD_ID);
-			if (threadId == null) {
-				throw new IllegalStateException("Thread not found: " + threadName);
+			String persistedThreadId = meta.get(FIELD_THREAD_ID);
+			if (persistedThreadId == null) {
+				throw new IllegalStateException("Thread not found: " + threadId);
 			}
 
 			// Mark thread as released
 			meta.put(FIELD_IS_RELEASED, "true");
 
 			// Update reverse mapping
-			String reverseKey = THREAD_REVERSE_PREFIX + threadId;
+			String reverseKey = THREAD_REVERSE_PREFIX + persistedThreadId;
 			RMap<String, String> reverse = redisson.getMap(reverseKey);
 			if (reverse != null) {
 				reverse.put(FIELD_IS_RELEASED, "true");
 			}
 
-			// Get checkpoints for Tag (using thread_id)
-			String contentKey = CHECKPOINT_PREFIX + threadId;
+			// Get checkpoints for Tag (using the internal thread id)
+			String contentKey = CHECKPOINT_PREFIX + persistedThreadId;
 			RBucket<String> bucket = redisson.getBucket(contentKey);
 			String content = bucket.get();
 			Collection<Checkpoint> checkpoints = deserializeCheckpoints(content);
 
-			return new Tag(threadName, checkpoints);
+			return new Tag(threadId, checkpoints);
 
 		}
 		catch (InterruptedException e) {

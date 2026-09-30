@@ -56,8 +56,8 @@ import static java.util.Objects.requireNonNull;
  *
  * <pre>
  *     CREATE TABLE GraphThread (
- *          thread_id UUID PRIMARY KEY,
- *          thread_name VARCHAR(255),
+ *          thread_id UUID PRIMARY KEY,               -- internal surrogate id, not the user-facing thread id
+ *          thread_name VARCHAR(255),                 -- user-facing thread id accepted by the API
  *          is_released BOOLEAN DEFAULT FALSE NOT NULL
  *     )
  *     CREATE UNIQUE INDEX idx_unique_lg4jthread_thread_name_unreleased
@@ -66,7 +66,7 @@ import static java.util.Objects.requireNonNull;
  *     CREATE TABLE GraphCheckpoint (
  *          checkpoint_id UUID PRIMARY KEY,
  *          parent_checkpoint_id UUID,
- *          thread_id UUID NOT NULL,
+ *          thread_id UUID NOT NULL,                  -- references the internal surrogate id
  *          node_id VARCHAR(255),
  *          next_node_id VARCHAR(255),
  *          state_data JSONB NOT NULL,
@@ -79,6 +79,14 @@ import static java.util.Objects.requireNonNull;
  *              ON DELETE CASCADE
  *     )
  * </pre>
+ * </p>
+ * <p>
+ * Thread identity: GraphThread.thread_name stores the thread id supplied
+ * through {@code RunnableConfig}, while GraphThread.thread_id stores an
+ * internally generated UUID that identifies one activation of that thread
+ * between a release and the next reuse of the same id. This column split is
+ * what allows a released thread id to be reused without orphaning the released
+ * checkpoint history.
  * </p>
  * <p>
  * A builder can be used to create an instance of PostgresSaver. The builder

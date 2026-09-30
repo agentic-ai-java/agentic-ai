@@ -35,6 +35,15 @@ import java.util.concurrent.locks.ReentrantLock;
  * This class owns the common saver lifecycle and latest-checkpoint cache behavior.
  * Subclasses keep database-specific SQL, transaction details and row mapping logic.
  * <p>
+ * Thread identity model: every saver operation is keyed on the user-facing thread
+ * id resolved from {@link RunnableConfig} (see
+ * {@link BaseCheckpointSaver#checkpointThreadId(RunnableConfig)}), which is the
+ * only thread identifier the public API exposes. Concrete schemas persist that
+ * id in their {@code thread_name} column, while their {@code thread_id} column
+ * holds an internally generated surrogate UUID identifying one activation of the
+ * thread between a release and the next reuse of the same id. The protected
+ * methods below always receive the user-facing thread id.
+ * <p>
  * Replacement: add artifact
  * {@code io.github.agentic-spring-ai:agentic-spring-ai-graph-persistence-jdbc}
  * and use
@@ -209,7 +218,7 @@ public abstract class AbstractJdbcCheckpointSaver implements BaseCheckpointSaver
 	/**
 	 * Selects the active checkpoint history for a thread from the backing database.
 	 *
-	 * @param threadId thread name/id used by the concrete saver schema
+	 * @param threadId user-facing thread id; persisted by the concrete schema as its thread name
 	 * @return checkpoint history in latest-first order
 	 * @throws Exception when the concrete saver cannot read checkpoint history
 	 */
@@ -218,7 +227,7 @@ public abstract class AbstractJdbcCheckpointSaver implements BaseCheckpointSaver
 	/**
 	 * Selects only the latest active checkpoint for a thread.
 	 *
-	 * @param threadId thread name/id used by the concrete saver schema
+	 * @param threadId user-facing thread id; persisted by the concrete schema as its thread name
 	 * @return latest checkpoint when one exists
 	 * @throws Exception when the concrete saver cannot read the latest checkpoint
 	 */
@@ -227,7 +236,7 @@ public abstract class AbstractJdbcCheckpointSaver implements BaseCheckpointSaver
 	/**
 	 * Selects an active checkpoint by id for a thread.
 	 *
-	 * @param threadId thread name/id used by the concrete saver schema
+	 * @param threadId user-facing thread id; persisted by the concrete schema as its thread name
 	 * @param checkpointId checkpoint id to look up
 	 * @return matching checkpoint when one exists
 	 * @throws Exception when the concrete saver cannot read the checkpoint
@@ -237,7 +246,7 @@ public abstract class AbstractJdbcCheckpointSaver implements BaseCheckpointSaver
 	/**
 	 * Inserts a new active checkpoint for a thread.
 	 *
-	 * @param threadId thread name/id used by the concrete saver schema
+	 * @param threadId user-facing thread id; persisted by the concrete schema as its thread name
 	 * @param checkpoint checkpoint to persist
 	 * @throws Exception when the concrete saver cannot insert the checkpoint
 	 */
@@ -246,7 +255,7 @@ public abstract class AbstractJdbcCheckpointSaver implements BaseCheckpointSaver
 	/**
 	 * Replaces an existing active checkpoint for a thread.
 	 *
-	 * @param threadId thread name/id used by the concrete saver schema
+	 * @param threadId user-facing thread id; persisted by the concrete schema as its thread name
 	 * @param checkpointId checkpoint id to replace
 	 * @param checkpoint replacement checkpoint data
 	 * @throws Exception when the concrete saver cannot update the checkpoint
@@ -256,7 +265,7 @@ public abstract class AbstractJdbcCheckpointSaver implements BaseCheckpointSaver
 	/**
 	 * Deletes active checkpoints by id for a thread.
 	 *
-	 * @param threadId thread name/id used by the concrete saver schema
+	 * @param threadId user-facing thread id; persisted by the concrete schema as its thread name
 	 * @param checkpointIds checkpoint ids to delete
 	 * @throws Exception when the concrete saver cannot delete checkpoints
 	 */
@@ -281,7 +290,7 @@ public abstract class AbstractJdbcCheckpointSaver implements BaseCheckpointSaver
 	/**
 	 * Marks the active thread as released in the backing database.
 	 *
-	 * @param threadId thread name/id used by the concrete saver schema
+	 * @param threadId user-facing thread id; persisted by the concrete schema as its thread name
 	 * @throws Exception when the concrete saver cannot release the thread
 	 */
 	protected abstract void releaseThread(String threadId) throws Exception;
