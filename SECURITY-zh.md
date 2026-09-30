@@ -2,7 +2,7 @@
 
 ## 报告安全问题
 
-如果你发现 Agentic AI 存在安全漏洞或潜在风险，请不要在公开 Issue、Discussion 或 Pull Request 中披露细节。
+如果你发现 ARGI 存在安全漏洞或潜在风险，请不要在公开 Issue、Discussion 或 Pull Request 中披露细节。
 
 请使用根目录 [`pom.xml`](pom.xml) 中列出的项目维护者 GitHub 主页公开联系方式，
 先请求建立私密报告渠道；在维护者确认私密渠道前，请勿发送漏洞细节。

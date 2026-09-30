@@ -1,6 +1,6 @@
 # Compatibility Policy
 
-Agentic AI 2.x preserves the current public contract while new
+ARGI 2.x preserves the current public contract while new
 enterprise runtime capabilities are designed and released. Compatibility is a
 merge requirement, not a release-only check.
 
@@ -12,7 +12,7 @@ The following surfaces are protected throughout the 2.x line:
   types, enum constants, and documented exception contracts.
 - Maven artifact coordinates and the Core/Extensions ownership boundary. Core
   must remain buildable and usable without an Extensions dependency.
-- Existing `spring.ai.alibaba.*` configuration keys, activation rules, value
+- Existing `argi.*` configuration keys, activation rules, value
   types, and default values.
 - Checkpoint and Store formats, namespace rules, table names, key prefixes,
   serializer behavior, and thread lookup rules.

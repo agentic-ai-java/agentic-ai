@@ -19,7 +19,7 @@ set -euo pipefail
 
 readonly REPO_ROOT="$(git rev-parse --show-toplevel)"
 readonly COMPAT_REPO="${SOURCE_COMPAT_MAVEN_REPO:-${REPO_ROOT}/target/binary-compatibility/m2}"
-readonly SOURCE_COMPAT_MODULES=':agentic-spring-ai-agent-framework,:agentic-spring-ai-studio,:agentic-spring-ai-starter-graph-observation,:agentic-spring-ai-starter-builtin-nodes'
+readonly SOURCE_COMPAT_MODULES=':argi-agent-framework,:argi-studio,:argi-starter-graph-observation,:argi-starter-builtin-nodes'
 readonly FIXTURE_POM="${REPO_ROOT}/tools/compatibility/legacy-api-consumer/pom.xml"
 
 mkdir -p "${COMPAT_REPO}"

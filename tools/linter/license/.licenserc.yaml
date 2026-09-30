@@ -80,5 +80,5 @@ header:
     - '**/*.properties'
     - 'tools/linter/codespell/.codespell.ignorewords'
     - 'tools/linter/codespell/.codespell.skip'
-    - 'agentic-ai-studio/agent-chat-ui'
+    - 'argi-studio/agent-chat-ui'
   comment: never

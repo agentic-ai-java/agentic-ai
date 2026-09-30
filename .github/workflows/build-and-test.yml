@@ -30,7 +30,7 @@ permissions:
   contents: read
 jobs:
   format:
-    if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
+    if: (github.repository == 'agentic-ai-java/argi')
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -38,7 +38,7 @@ jobs:
       - run: make tools
       - run: make format-check
   check-style:
-    if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
+    if: (github.repository == 'agentic-ai-java/argi')
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -46,7 +46,7 @@ jobs:
       - run: make tools
       - run: make checkstyle-check
   test:
-    if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
+    if: (github.repository == 'agentic-ai-java/argi')
     runs-on: ubuntu-22.04
     needs: [format, check-style]
     steps:
@@ -55,7 +55,7 @@ jobs:
       - run: make tools
       - run: make test
   jdk-compatibility:
-    if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
+    if: (github.repository == 'agentic-ai-java/argi')
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
@@ -68,7 +68,7 @@ jobs:
           java-version: ${{ matrix.java }}
       - run: ./mvnw -B -DskipTests compile
   api-compatibility:
-    if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
+    if: (github.repository == 'agentic-ai-java/argi')
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -77,19 +77,19 @@ jobs:
       - uses: ./tools/github-actions/setup-deps
       - run: make compatibility-check
   extensions-compatibility:
-    if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
+    if: (github.repository == 'agentic-ai-java/argi')
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: ./tools/github-actions/setup-deps
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          repository: agentic-spring-ai/agentic-spring-ai-extensions
+          repository: agentic-ai-java/argi-extensions
           ref: 8f311b8caa584cd415ea338617a79499725f95f0
-          path: .ci/agentic-spring-ai-extensions
-      - run: tools/scripts/verify-extensions-compatibility.sh .ci/agentic-spring-ai-extensions
+          path: .ci/argi-extensions
+      - run: tools/scripts/verify-extensions-compatibility.sh .ci/argi-extensions
   build:
-    if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
+    if: (github.repository == 'agentic-ai-java/argi')
     runs-on: ubuntu-22.04
     needs: [format, check-style, test, jdk-compatibility, api-compatibility, extensions-compatibility]
     steps:
@@ -97,20 +97,20 @@ jobs:
       - uses: ./tools/github-actions/setup-deps
       - run: corepack enable
       - run: corepack prepare pnpm@10.5.1 --activate
-      - run: pnpm --dir agentic-ai-studio/agent-chat-ui install --frozen-lockfile
-      - run: pnpm --dir agentic-ai-studio/agent-chat-ui audit --prod
-      - run: pnpm --dir agentic-ai-studio/agent-chat-ui run format:check
-      - run: pnpm --dir agentic-ai-studio/agent-chat-ui run lint
-      - run: pnpm --dir agentic-ai-studio/agent-chat-ui exec tsc --noEmit
-      - run: pnpm --dir agentic-ai-studio/agent-chat-ui run test
-      - run: pnpm --dir agentic-ai-studio/agent-chat-ui run build:static
+      - run: pnpm --dir argi-studio/agent-chat-ui install --frozen-lockfile
+      - run: pnpm --dir argi-studio/agent-chat-ui audit --prod
+      - run: pnpm --dir argi-studio/agent-chat-ui run format:check
+      - run: pnpm --dir argi-studio/agent-chat-ui run lint
+      - run: pnpm --dir argi-studio/agent-chat-ui exec tsc --noEmit
+      - run: pnpm --dir argi-studio/agent-chat-ui run test
+      - run: pnpm --dir argi-studio/agent-chat-ui run build:static
       - run: make tools
       - run: make build
       - name: Verify packaged Studio UI
         shell: bash
         run: |
-          studio_jar="$(find agentic-ai-studio/target -maxdepth 1 \
-            -name 'agentic-spring-ai-studio-*.jar' \
+          studio_jar="$(find argi-studio/target -maxdepth 1 \
+            -name 'argi-studio-*.jar' \
             ! -name '*-sources.jar' ! -name '*-javadoc.jar' -print -quit)"
           test -n "$studio_jar"
           jar tf "$studio_jar" | grep -q 'META-INF/resources/chatui/index.html'

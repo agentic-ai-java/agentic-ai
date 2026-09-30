@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: argi-studio-graph-test
+  main:
+    web-application-type: servlet
+
+server:
+  port: 0

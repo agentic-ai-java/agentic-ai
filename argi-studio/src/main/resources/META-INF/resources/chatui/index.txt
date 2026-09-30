@@ -1,0 +1,21 @@
+1:"$Sreact.fragment"
+2:I[17238,["7177","static/chunks/app/layout-84c2b1c8e7d05c4e.js"],"NuqsAdapter"]
+3:I[90001,[],""]
+4:I[2949,[],""]
+5:I[62600,[],"ClientPageRoot"]
+6:I[23945,["8447","static/chunks/75146d7d-2aa2ee64cd4d8a14.js","5076","static/chunks/5076-9eda3391a1272e43.js","9291","static/chunks/9291-2e6ab5aa0535b100.js","9542","static/chunks/9542-02042f322864c5cb.js","5078","static/chunks/5078-16ed6f8b0d735991.js","1192","static/chunks/1192-e70dfde13aebfdf7.js","8974","static/chunks/app/page-660f185951fb75a7.js"],"default"]
+9:I[25764,[],"OutletBoundary"]
+b:I[51197,[],"AsyncMetadataOutlet"]
+d:I[25764,[],"ViewportBoundary"]
+f:I[25764,[],"MetadataBoundary"]
+10:"$Sreact.suspense"
+12:I[60771,[],""]
+:HL["/chatui/_next/static/css/6bbedcd90f0f57c0.css","style"]
+:HL["/chatui/_next/static/css/a229bec8e039844c.css","style"]
+0:{"P":null,"b":"oF1LTqioY8k3Pt9v1ek3K","p":"/chatui","c":["",""],"i":false,"f":[[["",{"children":["__PAGE__",{}]},"$undefined","$undefined",true],["",["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/chatui/_next/static/css/6bbedcd90f0f57c0.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"en","suppressHydrationWarning":true,"children":["$","body",null,{"suppressHydrationWarning":true,"children":["$","$L2",null,{"children":["$","$L3",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L4",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}]}]}]]}],{"children":["__PAGE__",["$","$1","c",{"children":[["$","$L5",null,{"Component":"$6","searchParams":{},"params":{},"promises":["$@7","$@8"]}],[["$","link","0",{"rel":"stylesheet","href":"/chatui/_next/static/css/a229bec8e039844c.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","$L9",null,{"children":["$La",["$","$Lb",null,{"promise":"$@c"}]]}]]}],{},null,false]},null,false],["$","$1","h",{"children":[null,[["$","$Ld",null,{"children":"$Le"}],null],["$","$Lf",null,{"children":["$","div",null,{"hidden":true,"children":["$","$10",null,{"fallback":null,"children":"$L11"}]}]}]]}],false]],"m":"$undefined","G":["$12",[]],"s":false,"S":true}
+7:{}
+8:"$0:f:0:1:2:children:1:props:children:0:props:params"
+e:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+a:null
+c:{"metadata":[["$","title","0",{"children":"ARGI Studio"}],["$","meta","1",{"name":"description","content":"Agent and graph debugging UI for ARGI"}]],"error":null,"digest":"$undefined"}
+11:"$c:metadata"

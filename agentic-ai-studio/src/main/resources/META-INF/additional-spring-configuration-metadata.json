@@ -1,9 +1,0 @@
-{
-  "properties": [
-    {
-      "name": "spring.ai.alibaba.agent.studio.execution.auth-token",
-      "type": "java.lang.String",
-      "description": "Required token for all Studio API requests. Static UI resources remain public; API requests fail closed when this property is empty."
-    }
-  ]
-}

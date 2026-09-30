@@ -1,0 +1,19 @@
+{
+  "properties": [
+    {
+      "name": "argi.graph.observation.capture-content",
+      "type": "java.lang.Boolean",
+      "defaultValue": false
+    },
+    {
+      "name": "argi.graph.observation.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true
+    },
+    {
+      "name": "argi.graph.observation.max-content-length",
+      "type": "java.lang.Integer",
+      "defaultValue": 1000
+    }
+  ]
+}

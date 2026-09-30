@@ -19,41 +19,41 @@
 		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>io.github.agentic.spring.ai</groupId>
+	<groupId>io.github.agentic.ai</groupId>
 	<artifactId>legacy-api-consumer</artifactId>
 	<version>1.0.0</version>
 	<packaging>jar</packaging>
 
 	<properties>
 		<maven.compiler.release>17</maven.compiler.release>
-		<agentic-spring-ai.version>2.1.0-dev</agentic-spring-ai.version>
+		<argi.version>2.1.0-dev</argi.version>
 	</properties>
 
 	<dependencies>
 		<dependency>
-			<groupId>io.github.agentic-spring-ai</groupId>
-			<artifactId>agentic-spring-ai-graph-core</artifactId>
-			<version>${agentic-spring-ai.version}</version>
+			<groupId>io.github.agentic-ai</groupId>
+			<artifactId>argi-graph-core</artifactId>
+			<version>${argi.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>io.github.agentic-spring-ai</groupId>
-			<artifactId>agentic-spring-ai-agent-framework</artifactId>
-			<version>${agentic-spring-ai.version}</version>
+			<groupId>io.github.agentic-ai</groupId>
+			<artifactId>argi-agent-framework</artifactId>
+			<version>${argi.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>io.github.agentic-spring-ai</groupId>
-			<artifactId>agentic-spring-ai-studio</artifactId>
-			<version>${agentic-spring-ai.version}</version>
+			<groupId>io.github.agentic-ai</groupId>
+			<artifactId>argi-studio</artifactId>
+			<version>${argi.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>io.github.agentic-spring-ai</groupId>
-			<artifactId>agentic-spring-ai-starter-graph-observation</artifactId>
-			<version>${agentic-spring-ai.version}</version>
+			<groupId>io.github.agentic-ai</groupId>
+			<artifactId>argi-starter-graph-observation</artifactId>
+			<version>${argi.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>io.github.agentic-spring-ai</groupId>
-			<artifactId>agentic-spring-ai-starter-builtin-nodes</artifactId>
-			<version>${agentic-spring-ai.version}</version>
+			<groupId>io.github.agentic-ai</groupId>
+			<artifactId>argi-starter-builtin-nodes</artifactId>
+			<version>${argi.version}</version>
 		</dependency>
 	</dependencies>
 </project>

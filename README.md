@@ -1,26 +1,26 @@
 <div align="center">
-  <a href="https://agentic-spring-ai.github.io/website/en/">
-    <img src="asset/images/logo.svg" alt="Agentic AI logo" width="180">
+  <a href="https://agentic-ai-java.github.io/argi-website/en/">
+    <img src="asset/images/logo.svg" alt="ARGI logo" width="180">
   </a>
-  <h1>Agentic AI</h1>
+  <h1>ARGI</h1>
   <p><strong>Stateful agent runtime for Java applications.</strong></p>
   <p>Graph workflows · ReAct agents · Context engineering · Human-in-the-loop · Multi-agent orchestration</p>
   <p>
-    <a href="https://agentic-spring-ai.github.io/website/en/docs/overview">Documentation</a> ·
-    <a href="https://agentic-spring-ai.github.io/website/en/docs/quick-start">Quick Start</a> ·
-    <a href="https://github.com/agentic-spring-ai/examples/tree/main/examples">Examples</a> ·
+    <a href="https://agentic-ai-java.github.io/argi-website/en/docs/overview">Documentation</a> ·
+    <a href="https://agentic-ai-java.github.io/argi-website/en/docs/quick-start">Quick Start</a> ·
+    <a href="https://github.com/agentic-ai-java/argi-examples/tree/main/examples">Examples</a> ·
     <a href="README-zh.md">简体中文</a>
   </p>
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-4EB1BA.svg" alt="License"></a>
-    <a href="https://github.com/agentic-spring-ai/agentic-spring-ai"><img src="https://img.shields.io/badge/version-2.1.0--dev-blue" alt="Version"></a>
+    <a href="https://github.com/agentic-ai-java/argi"><img src="https://img.shields.io/badge/version-2.1.0--dev-blue" alt="Version"></a>
     <img src="https://img.shields.io/badge/Java-17%2B-f59e0b" alt="Java 17+">
   </p>
 </div>
 
 ---
 
-Agentic AI is a framework for Java developers building agents, workflows, and multi-agent applications. Forked from Spring AI Alibaba, it provides context engineering, human-in-the-loop, graph workflows, and distributed Agent-to-Agent (A2A) collaboration.
+ARGI stands for **Agent Runtime and Graph Intelligence** and is pronounced **"AR-jee"** (`/ˈɑːr.dʒiː/`). It is a framework for Java developers building agents, workflows, and multi-agent applications. Forked from Spring AI Alibaba, it provides context engineering, human-in-the-loop, graph workflows, and distributed Agent-to-Agent (A2A) collaboration.
 
 ## Features
 
@@ -36,53 +36,52 @@ Agentic AI is a framework for Java developers building agents, workflows, and mu
 Requirements: JDK 17 or later and Maven 3.9.1 or later. Build the framework with its Maven Wrapper and run the standalone examples with your local Maven installation.
 
 ```shell
-git clone --depth=1 https://github.com/agentic-spring-ai/agentic-spring-ai.git
-cd agentic-spring-ai
+git clone --depth=1 https://github.com/agentic-ai-java/argi.git
+cd argi
 
 # Install the local development modules.
 ./mvnw -DskipTests install
 
-# Configure the DashScope API key and run the chatbot example.
+# Configure any supported model provider and run the chatbot example.
 cd ..
-git clone --depth=1 https://github.com/agentic-spring-ai/examples.git
-cd examples
-export AI_DASHSCOPE_API_KEY=your-api-key
+git clone --depth=1 https://github.com/agentic-ai-java/argi-examples.git
+cd argi-examples
 mvn -f examples/chatbot/pom.xml spring-boot:run
 ```
 
-The examples also require the matching Extensions BOM and provider starters. See the [example setup](https://github.com/agentic-spring-ai/examples/tree/main/examples#环境与依赖).
+The examples also require the matching Extensions BOM and provider starters. See the [example setup](https://github.com/agentic-ai-java/argi-examples/tree/main/examples#环境与依赖).
 
-Open [http://localhost:8080/chatui/index.html](http://localhost:8080/chatui/index.html). See the [Quick Start](https://agentic-spring-ai.github.io/website/en/docs/quick-start) for other model providers.
+Open [http://localhost:8080/chatui/index.html](http://localhost:8080/chatui/index.html). See the [Quick Start](https://agentic-ai-java.github.io/argi-website/en/docs/quick-start) for other model providers.
 
 ## Modules
 
 | Module | Description |
 | --- | --- |
-| [Agent Framework](agentic-ai-agent-framework) | Agent development and multi-agent orchestration |
-| [Graph Core](agentic-ai-graph-core) | State management, persistence, and workflow runtime |
-| [Studio](agentic-ai-studio) | Visual debugging UI for agents |
-| [Sandbox](https://github.com/agentic-spring-ai/agentic-spring-ai-extensions/tree/main/sandbox/agentic-spring-ai-sandbox) | Optional isolated execution environment for tool calls, maintained in Extensions |
+| [Agent Framework](argi-agent-framework) | Agent development and multi-agent orchestration |
+| [Graph Core](argi-graph-core) | State management, persistence, and workflow runtime |
+| [Studio](argi-studio) | Visual debugging UI for agents |
+| [Sandbox](https://github.com/agentic-ai-java/argi-extensions/tree/main/sandbox/argi-sandbox) | Optional isolated execution environment for tool calls, maintained in Extensions |
 | [Spring Boot Starters](spring-boot-starters) | Built-in graph nodes and graph observability |
-| [Extensions](https://github.com/agentic-spring-ai/agentic-spring-ai-extensions) | Model and document contracts, A2A, Nacos, AgentScope, storage, and other optional integrations |
-| [Examples](https://github.com/agentic-spring-ai/examples/tree/main/examples) | Chatbot, multi-agent, graph engineering, and documentation examples |
+| [Extensions](https://github.com/agentic-ai-java/argi-extensions) | Model and document contracts, A2A, Nacos, AgentScope, storage, and other optional integrations |
+| [Examples](https://github.com/agentic-ai-java/argi-examples/tree/main/examples) | Chatbot, multi-agent, graph engineering, and documentation examples |
 
 ## Documentation
 
-- [Overview](https://agentic-spring-ai.github.io/website/en/docs/overview)
-- [Quick Start](https://agentic-spring-ai.github.io/website/en/docs/quick-start)
-- [Agent Framework tutorials](https://agentic-spring-ai.github.io/website/en/docs/frameworks/agent-framework/tutorials/agents)
-- [Graph Core Quick Start](https://agentic-spring-ai.github.io/website/en/docs/frameworks/graph-core/quick-start)
-- [Examples](https://github.com/agentic-spring-ai/examples/tree/main/examples)
-- [Provider-specific examples](https://github.com/agentic-spring-ai/agentic-spring-ai-extensions/tree/main/examples)
+- [Overview](https://agentic-ai-java.github.io/argi-website/en/docs/overview)
+- [Quick Start](https://agentic-ai-java.github.io/argi-website/en/docs/quick-start)
+- [Agent Framework tutorials](https://agentic-ai-java.github.io/argi-website/en/docs/frameworks/agent-framework/tutorials/agents)
+- [Graph Core Quick Start](https://agentic-ai-java.github.io/argi-website/en/docs/frameworks/graph-core/quick-start)
+- [Examples](https://github.com/agentic-ai-java/argi-examples/tree/main/examples)
+- [Provider-specific examples](https://github.com/agentic-ai-java/argi-extensions/tree/main/examples)
 
 ## Contributing
 
-Read the [contribution guide](CONTRIBUTING.md) before submitting changes. Report problems and suggestions through [GitHub Issues](https://github.com/agentic-spring-ai/agentic-spring-ai/issues).
+Read the [contribution guide](CONTRIBUTING.md) before submitting changes. Report problems and suggestions through [GitHub Issues](https://github.com/agentic-ai-java/argi/issues).
 
-<a href="https://github.com/agentic-spring-ai/agentic-spring-ai/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=agentic-spring-ai/agentic-spring-ai&max=500&columns=18&anon=1" alt="contributors"/>
+<a href="https://github.com/agentic-ai-java/argi/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=agentic-ai-java/argi&max=500&columns=18&anon=1" alt="contributors"/>
 </a>
 
 ## License
 
-Agentic AI is available under the [Apache License 2.0](LICENSE).
+ARGI is available under the [Apache License 2.0](LICENSE).

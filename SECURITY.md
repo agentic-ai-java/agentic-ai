@@ -2,7 +2,7 @@
 
 ## Reporting a Security Issue
 
-If you discover a security vulnerability or potential risk in Agentic AI, please do not disclose details in a public Issue, Discussion, or Pull Request.
+If you discover a security vulnerability or potential risk in ARGI, please do not disclose details in a public Issue, Discussion, or Pull Request.
 
 Contact one of the project maintainers listed in [`pom.xml`](pom.xml) using the
 public contact information on their GitHub profile, and ask to establish a

@@ -16,15 +16,15 @@
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>io.github.agentic-spring-ai</groupId>
-    <artifactId>agentic-spring-ai</artifactId>
+    <groupId>io.github.agentic-ai</groupId>
+    <artifactId>argi</artifactId>
     <version>${revision}</version>
 
     <packaging>pom</packaging>
 
-    <name>Agentic AI</name>
-    <description>Building AI applications with Spring Boot</description>
-    <url>https://github.com/agentic-spring-ai/agentic-spring-ai</url>
+    <name>ARGI</name>
+    <description>Agent Runtime and Graph Intelligence for Java applications</description>
+    <url>https://github.com/agentic-ai-java/argi</url>
 
     <licenses>
         <license>
@@ -47,33 +47,33 @@
     </developers>
 
     <modules>
-        <module>agentic-ai-bom</module>
-        <module>agentic-ai-graph-core</module>
-        <module>agentic-ai-agent-framework</module>
-        <module>agentic-ai-studio</module>
+        <module>argi-bom</module>
+        <module>argi-graph-core</module>
+        <module>argi-agent-framework</module>
+        <module>argi-studio</module>
 
-        <!-- Agentic AI Spring Boot Starters -->
-        <module>spring-boot-starters/agentic-ai-starter-graph-observation</module>
-        <module>spring-boot-starters/agentic-ai-starter-builtin-nodes</module>
+        <!-- ARGI Spring Boot Starters -->
+        <module>spring-boot-starters/argi-starter-graph-observation</module>
+        <module>spring-boot-starters/argi-starter-builtin-nodes</module>
     </modules>
 
     <scm>
-        <connection>git://github.com/agentic-spring-ai/agentic-spring-ai.git</connection>
-        <developerConnection>git@github.com:agentic-spring-ai/agentic-spring-ai.git</developerConnection>
-        <url>https://github.com/agentic-spring-ai/agentic-spring-ai</url>
+        <connection>git://github.com/agentic-ai-java/argi.git</connection>
+        <developerConnection>git@github.com:agentic-ai-java/argi.git</developerConnection>
+        <url>https://github.com/agentic-ai-java/argi</url>
     </scm>
     <issueManagement>
         <system>Github Issues</system>
-        <url>https://github.com/agentic-spring-ai/agentic-spring-ai/issues</url>
+        <url>https://github.com/agentic-ai-java/argi/issues</url>
     </issueManagement>
     <ciManagement>
         <system>Github Actions</system>
-        <url>https://github.com/agentic-spring-ai/agentic-spring-ai/actions</url>
+        <url>https://github.com/agentic-ai-java/argi/actions</url>
     </ciManagement>
 
     <properties>
 
-        <!-- Spring AI Alibaba Version -->
+        <!-- ARGI Version -->
         <revision>2.1.0-dev</revision>
 
         <!-- Maven project basic config -->

@@ -1,12 +1,12 @@
-# AGENTS.md - AI Assistant Guide for Agentic AI
+# AGENTS.md - AI Assistant Guide for ARGI
 
-This file provides guidance for AI assistants working with the Agentic AI codebase.
+This file provides guidance for AI assistants working with the ARGI codebase.
 
 ## Project Overview
 
-Agentic AI is a production-ready framework for building agents, workflows, and multi-agent applications. It is forked from Spring AI Alibaba and focuses on stateful agent runtime capabilities: graph orchestration, persistence, context engineering, and human-in-the-loop support. It also supports the multi-model integration capabilities provided by Spring AI.
+ARGI (Agent Runtime and Graph Intelligence, pronounced "AR-jee") is a production-ready framework for building agents, workflows, and multi-agent applications. It is forked from Spring AI Alibaba and focuses on stateful agent runtime capabilities: graph orchestration, persistence, context engineering, and human-in-the-loop support. It also supports the multi-model integration capabilities provided by Spring AI.
 
-> **Naming:** the product display name is *Agentic AI*. Published Maven coordinates (`io.github.agentic-spring-ai:*`), Java packages (`io.github.agentic.spring.ai`), configuration prefixes (`spring.ai.alibaba.*`), class names (`SpringAiAlibaba*`), the `Saa*` prefix, and metric names remain compatibility contracts. Do not rename them without a deprecation cycle.
+> **Naming:** the product display name is *ARGI*. Published Maven coordinates use `io.github.agentic-ai:argi-*`, Java packages use `io.github.agentic.ai`, configuration prefixes use `argi.*`, and framework-specific public class names use the `Argi*` prefix.
 
 **Key Features:**
 
@@ -20,24 +20,24 @@ Agentic AI is a production-ready framework for building agents, workflows, and m
 ## Repository Structure
 
 ```
-agentic-spring-ai/
-├── agentic-ai-agent-framework/        # Multi-agent framework (Sequential, Parallel, Routing, etc.)
-├── agentic-ai-graph-core/             # Runtime providing persistence, workflow orchestration, state mgmt
-├── agentic-ai-studio/                 # Embedded UI for debugging agents visually
-├── agentic-ai-bom/                    # Bill of Materials for dependency management
+argi/
+├── argi-agent-framework/        # Multi-agent framework (Sequential, Parallel, Routing, etc.)
+├── argi-graph-core/             # Runtime providing persistence, workflow orchestration, state mgmt
+├── argi-studio/                 # Embedded UI for debugging agents visually
+├── argi-bom/                    # Bill of Materials for dependency management
 ├── spring-boot-starters/              # Spring Boot Starters
-│   ├── agentic-ai-starter-builtin-nodes/     # Built-in workflow nodes
-│   └── agentic-ai-starter-graph-observation/ # Observability
+│   ├── argi-starter-builtin-nodes/     # Built-in workflow nodes
+│   └── argi-starter-graph-observation/ # Observability
 ├── tools/                             # Build and linting tools
 └── docs/                              # Documentation
 ```
 
 This repository holds the core only. Optional integrations live in separate repositories:
 
-- [Extensions](https://github.com/agentic-spring-ai/agentic-spring-ai-extensions) - model and document contracts, A2A Nacos, config Nacos, AgentScope, JDBC/Redis/MongoDB graph persistence, the Docker code executor, and the tool-call sandbox.
-- [Examples](https://github.com/agentic-spring-ai/examples/tree/main/examples) - chatbot, multi-agent, and graph engineering samples.
+- [Extensions](https://github.com/agentic-ai-java/argi-extensions) - model and document contracts, A2A Nacos, config Nacos, AgentScope, JDBC/Redis/MongoDB graph persistence, the Docker code executor, and the tool-call sandbox.
+- [Examples](https://github.com/agentic-ai-java/argi-examples/tree/main/examples) - chatbot, multi-agent, and graph engineering samples.
 
-Since `2.1.0` the core no longer imports the Extensions BOM. Applications that use optional integrations must import both `agentic-spring-ai-bom` and the matching Extensions BOM.
+Since `2.1.0` the core no longer imports the Extensions BOM. Applications that use optional integrations must import both `argi-bom` and the matching Extensions BOM.
 
 ## Build System
 
@@ -54,7 +54,7 @@ Since `2.1.0` the core no longer imports the Extensions BOM. Applications that u
 ./mvnw -B package -DskipTests=true
 
 # Build a specific module
-./mvnw -pl :agentic-spring-ai-agent-framework -B package -DskipTests=true
+./mvnw -pl :argi-agent-framework -B package -DskipTests=true
 
 # Clean project
 ./mvnw clean
@@ -86,7 +86,7 @@ make licenses-check
 
 ### General Guidelines
 
-- Follow **Spring AI Alibaba** standard code formatting.
+- Follow the repository's existing Java formatting and Checkstyle rules.
 - Use **Apache 2.0** license headers for all Java files.
 - **Java 17** features are encouraged (records, switch expressions, text blocks).
 - Avoid `System.out.println` - use SLF4J logging.
@@ -141,12 +141,12 @@ The project uses `make` for linting tasks:
 
 1.  **JDK Version**: Project targets JDK 17. Use appropriate language features.
 2.  **Spring Boot**: Uses Spring Boot 4.1.1 with Spring AI 2.0.1. The `jakarta.*` namespace applies throughout; there is no `javax.*` code.
-3.  **Dependencies**: Check `agentic-spring-ai-bom` or parent pom for version management.
+3.  **Dependencies**: Check `argi-bom` or parent pom for version management.
 4.  **Makefile**: Use the Makefile in the root for project maintenance tasks (linting, license checks).
-5.  **Structure**: When adding new features, prefer creating or updating modules within `agentic-ai-agent-framework` or `spring-boot-starters` depending on the scope.
+5.  **Structure**: When adding new features, prefer creating or updating modules within `argi-agent-framework` or `spring-boot-starters` depending on the scope.
 
 ## Important Links
 
-- **Issues**: [https://github.com/agentic-spring-ai/agentic-spring-ai/issues](https://github.com/agentic-spring-ai/agentic-spring-ai/issues)
-- **Source**: [https://github.com/agentic-spring-ai/agentic-spring-ai](https://github.com/agentic-spring-ai/agentic-spring-ai)
+- **Issues**: [https://github.com/agentic-ai-java/argi/issues](https://github.com/agentic-ai-java/argi/issues)
+- **Source**: [https://github.com/agentic-ai-java/argi](https://github.com/agentic-ai-java/argi)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)

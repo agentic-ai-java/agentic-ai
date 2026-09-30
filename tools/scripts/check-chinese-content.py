@@ -259,11 +259,11 @@ def main():
     parser = argparse.ArgumentParser(description='Check Chinese content in Java and frontend code')
     parser.add_argument('--dirs', '-d',
                        nargs='+',
-                       default=['agentic-ai-agent-framework/src/main/java',
-                               'agentic-ai-graph-core/src/main/java',
-                               'agentic-ai-studio/src/main/java',
+                       default=['argi-agent-framework/src/main/java',
+                               'argi-graph-core/src/main/java',
+                               'argi-studio/src/main/java',
                                'spring-boot-starters',
-                               'agentic-ai-studio/agent-chat-ui/src'],
+                               'argi-studio/agent-chat-ui/src'],
                        help='Directory paths to check (relative to current directory)')
     parser.add_argument('--patterns', '-p',
                        nargs='+',

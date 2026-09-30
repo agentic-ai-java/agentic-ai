@@ -2,7 +2,7 @@
 
 ## Our Commitment
 
-The Agentic AI community is committed to providing an open, welcoming, and respectful collaboration environment. Every participant should be treated with respect, regardless of background, experience, identity, viewpoint, or use case.
+The ARGI community is committed to providing an open, welcoming, and respectful collaboration environment. Every participant should be treated with respect, regardless of background, experience, identity, viewpoint, or use case.
 
 ## Expected Behavior
 

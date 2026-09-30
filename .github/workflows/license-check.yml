@@ -26,7 +26,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   license-check:
-    if: (github.repository == 'agentic-spring-ai/agentic-spring-ai')
+    if: (github.repository == 'agentic-ai-java/argi')
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

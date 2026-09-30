@@ -20,12 +20,12 @@ set -euo pipefail
 readonly BASE_COMMIT="${1:-c128f02584fc976ee641572074db2e556466f6a2}"
 readonly JAPICMP_VERSION="${JAPICMP_VERSION:-0.23.1}"
 readonly REVISION="${REVISION:-2.1.0-dev}"
-readonly REMOVED_BUILTIN_TYPES='io.github.agentic.spring.ai.graph.node.KnowledgeRetrievalNode;'
-readonly REMOVED_BUILTIN_NESTED_TYPES='io.github.agentic.spring.ai.graph.node.KnowledgeRetrievalNode$*;'
-readonly REMOVED_BUILTIN_NETWORK_TYPES='io.github.agentic.spring.ai.graph.node.HttpNode;io.github.agentic.spring.ai.graph.node.HttpNode$*;io.github.agentic.spring.ai.graph.node.DocumentExtractorNode;io.github.agentic.spring.ai.graph.node.DocumentExtractorNode$*;'
-readonly REMOVED_BUILTIN_EXECUTOR_TYPES='io.github.agentic.spring.ai.graph.node.code.DockerCodeExecutor;io.github.agentic.spring.ai.graph.node.code.DockerCodeExecutor$*'
+readonly REMOVED_BUILTIN_TYPES='io.github.agentic.ai.graph.node.KnowledgeRetrievalNode;'
+readonly REMOVED_BUILTIN_NESTED_TYPES='io.github.agentic.ai.graph.node.KnowledgeRetrievalNode$*;'
+readonly REMOVED_BUILTIN_NETWORK_TYPES='io.github.agentic.ai.graph.node.HttpNode;io.github.agentic.ai.graph.node.HttpNode$*;io.github.agentic.ai.graph.node.DocumentExtractorNode;io.github.agentic.ai.graph.node.DocumentExtractorNode$*;'
+readonly REMOVED_BUILTIN_EXECUTOR_TYPES='io.github.agentic.ai.graph.node.code.DockerCodeExecutor;io.github.agentic.ai.graph.node.code.DockerCodeExecutor$*'
 readonly REMOVED_BUILTIN_EXCLUDES="${REMOVED_BUILTIN_TYPES}${REMOVED_BUILTIN_NESTED_TYPES}${REMOVED_BUILTIN_NETWORK_TYPES}${REMOVED_BUILTIN_EXECUTOR_TYPES}"
-readonly CORE_RUNTIME_MODULES=':agentic-spring-ai-graph-core,:agentic-spring-ai-agent-framework,:agentic-spring-ai-studio,:agentic-spring-ai-starter-graph-observation,:agentic-spring-ai-starter-builtin-nodes'
+readonly CORE_RUNTIME_MODULES=':argi-graph-core,:argi-agent-framework,:argi-studio,:argi-starter-graph-observation,:argi-starter-builtin-nodes'
 
 readonly REPO_ROOT="$(git rev-parse --show-toplevel)"
 readonly TMP_PARENT="${TMPDIR:-/tmp}"
@@ -115,25 +115,25 @@ compare_module() {
 	echo "Binary compatible: ${label} (${report_file})"
 }
 
-compare_module "agentic-spring-ai-graph-core" \
-	"${BASELINE_WORKTREE}/agentic-spring-ai-graph-core/target/agentic-spring-ai-graph-core-${REVISION}.jar" \
-	"${REPO_ROOT}/agentic-ai-graph-core/target/agentic-spring-ai-graph-core-${REVISION}.jar"
+compare_module "argi-graph-core" \
+	"${BASELINE_WORKTREE}/argi-graph-core/target/argi-graph-core-${REVISION}.jar" \
+	"${REPO_ROOT}/argi-graph-core/target/argi-graph-core-${REVISION}.jar"
 
-compare_module "agentic-spring-ai-agent-framework" \
-	"${BASELINE_WORKTREE}/agentic-spring-ai-agent-framework/target/agentic-spring-ai-agent-framework-${REVISION}.jar" \
-	"${REPO_ROOT}/agentic-ai-agent-framework/target/agentic-spring-ai-agent-framework-${REVISION}.jar"
+compare_module "argi-agent-framework" \
+	"${BASELINE_WORKTREE}/argi-agent-framework/target/argi-agent-framework-${REVISION}.jar" \
+	"${REPO_ROOT}/argi-agent-framework/target/argi-agent-framework-${REVISION}.jar"
 
-compare_module "agentic-spring-ai-studio" \
-	"${BASELINE_WORKTREE}/agentic-spring-ai-studio/target/agentic-spring-ai-studio-${REVISION}.jar" \
-	"${REPO_ROOT}/agentic-ai-studio/target/agentic-spring-ai-studio-${REVISION}.jar"
+compare_module "argi-studio" \
+	"${BASELINE_WORKTREE}/argi-studio/target/argi-studio-${REVISION}.jar" \
+	"${REPO_ROOT}/argi-studio/target/argi-studio-${REVISION}.jar"
 
-compare_module "agentic-spring-ai-starter-graph-observation" \
-	"${BASELINE_WORKTREE}/spring-boot-starters/agentic-spring-ai-starter-graph-observation/target/agentic-spring-ai-starter-graph-observation-${REVISION}.jar" \
-	"${REPO_ROOT}/spring-boot-starters/agentic-ai-starter-graph-observation/target/agentic-spring-ai-starter-graph-observation-${REVISION}.jar"
+compare_module "argi-starter-graph-observation" \
+	"${BASELINE_WORKTREE}/spring-boot-starters/argi-starter-graph-observation/target/argi-starter-graph-observation-${REVISION}.jar" \
+	"${REPO_ROOT}/spring-boot-starters/argi-starter-graph-observation/target/argi-starter-graph-observation-${REVISION}.jar"
 
-compare_module "agentic-spring-ai-starter-builtin-nodes" \
-	"${BASELINE_WORKTREE}/spring-boot-starters/agentic-spring-ai-starter-builtin-nodes/target/agentic-spring-ai-starter-builtin-nodes-${REVISION}.jar" \
-	"${REPO_ROOT}/spring-boot-starters/agentic-ai-starter-builtin-nodes/target/agentic-spring-ai-starter-builtin-nodes-${REVISION}.jar" \
+compare_module "argi-starter-builtin-nodes" \
+	"${BASELINE_WORKTREE}/spring-boot-starters/argi-starter-builtin-nodes/target/argi-starter-builtin-nodes-${REVISION}.jar" \
+	"${REPO_ROOT}/spring-boot-starters/argi-starter-builtin-nodes/target/argi-starter-builtin-nodes-${REVISION}.jar" \
 	"${REMOVED_BUILTIN_EXCLUDES}"
 
 echo "Core binary compatibility gate passed"

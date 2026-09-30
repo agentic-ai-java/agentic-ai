@@ -30,14 +30,14 @@
 "area/graph":
   - changed-files:
       - any-glob-to-any-file:
-          - "agentic-ai-graph-core/**/*"
+          - "argi-graph-core/**/*"
 "area/core":
   - changed-files:
       - any-glob-to-any-file:
-          - "agentic-ai-agent-framework/**/*"
-          - "agentic-ai-bom/**/*"
+          - "argi-agent-framework/**/*"
+          - "argi-bom/**/*"
           - "spring-boot-starters/**/*"
 "area/studio":
   - changed-files:
       - any-glob-to-any-file:
-          - "agentic-ai-studio/**/*"
+          - "argi-studio/**/*"

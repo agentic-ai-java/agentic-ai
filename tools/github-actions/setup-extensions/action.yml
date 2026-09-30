@@ -14,10 +14,10 @@
 # limitations under the License.
 #
 name: setup-extensions
-description: Install the unpublished Agentic AI extension artifacts required by this repository
+description: Install the unpublished ARGI extension artifacts required by this repository
 inputs:
   ref:
-    description: Agentic AI Extensions git ref
+    description: ARGI Extensions git ref
     required: false
     default: 8f311b8caa584cd415ea338617a79499725f95f0
 runs:
@@ -27,30 +27,29 @@ runs:
       shell: bash
       run: |
         ./mvnw -B \
-          -pl :agentic-spring-ai-bom,:agentic-spring-ai-graph-core,:agentic-spring-ai-agent-framework,:agentic-spring-ai-studio,:agentic-spring-ai-starter-builtin-nodes \
+          -pl :argi-bom,:argi-graph-core,:argi-agent-framework,:argi-studio,:argi-starter-builtin-nodes \
           -am -Dmaven.test.skip=true install
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
-        repository: agentic-spring-ai/agentic-spring-ai-extensions
+        repository: agentic-ai-java/argi-extensions
         ref: ${{ inputs.ref }}
-        path: .ci/agentic-spring-ai-extensions
+        path: .ci/argi-extensions
     - name: Install required extension artifacts
       shell: bash
       run: |
         extensions_modules=(
-          :agentic-spring-ai-extensions-bom
-          :agentic-spring-ai-extensions-model
-          :agentic-spring-ai-starter-dashscope
-          :agentic-spring-ai-starter-agentscope
-          :agentic-spring-ai-starter-a2a-nacos
-          :agentic-spring-ai-graph-persistence-jdbc
-          :agentic-spring-ai-graph-persistence-mongodb
-          :agentic-spring-ai-graph-persistence-redis
-          :agentic-spring-ai-code-executor-docker
-          :agentic-spring-ai-graph-node-rag
-          :agentic-spring-ai-graph-node-network
+          :argi-extensions-bom
+          :argi-extensions-model
+          :argi-starter-agentscope
+          :argi-starter-a2a-nacos
+          :argi-graph-persistence-jdbc
+          :argi-graph-persistence-mongodb
+          :argi-graph-persistence-redis
+          :argi-code-executor-docker
+          :argi-graph-node-rag
+          :argi-graph-node-network
         )
         extensions_module_list=$(IFS=,; echo "${extensions_modules[*]}")
         mvn -B -Dmaven.test.skip=true \
-          -f .ci/agentic-spring-ai-extensions/pom.xml \
+          -f .ci/argi-extensions/pom.xml \
           -pl "$extensions_module_list" -am install
