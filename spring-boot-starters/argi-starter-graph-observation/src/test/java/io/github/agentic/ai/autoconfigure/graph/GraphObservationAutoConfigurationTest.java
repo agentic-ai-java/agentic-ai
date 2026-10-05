@@ -105,6 +105,32 @@ class GraphObservationAutoConfigurationTest {
 	}
 
 	@Test
+	void compiledGraphUsingStarterConfigProducesGraphObservations() {
+		this.contextRunner.withPropertyValues("argi.graph.observation.enabled=true")
+			.withUserConfiguration(TestConfiguration.class)
+			.run(context -> {
+				AtomicBoolean graphObserved = new AtomicBoolean();
+				context.getBean(ObservationRegistry.class).observationConfig()
+					.observationHandler(new ObservationHandler<Observation.Context>() {
+						@Override
+						public boolean supportsContext(Observation.Context observationContext) {
+							return "argi.graph.graph-execution".equals(observationContext.getName());
+						}
+
+						@Override
+						public void onStart(Observation.Context observationContext) {
+							graphObserved.set(true);
+						}
+					});
+				CompiledGraph graph = new StateGraph().addNode("work", node_async(state -> Map.of("result", "done")))
+					.addEdge(START, "work").addEdge("work", END).compile(context.getBean(CompileConfig.class));
+
+				assertThat(graph.invoke(Map.of()).orElseThrow().value("result").orElseThrow()).isEqualTo("done");
+				assertThat(graphObserved).isTrue();
+			});
+	}
+
+	@Test
 	void shouldNotAutoConfigureWhenDisabled() {
 		this.contextRunner.withPropertyValues("argi.graph.observation.enabled=false").run(context -> {
 			assertThat(context).doesNotHaveBean(GraphObservationLifecycleListener.class);
