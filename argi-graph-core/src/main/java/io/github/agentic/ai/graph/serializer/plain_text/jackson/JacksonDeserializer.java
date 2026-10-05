@@ -17,6 +17,7 @@ package io.github.agentic.ai.graph.serializer.plain_text.jackson;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.lang.reflect.Modifier;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,16 @@ import static io.github.agentic.ai.graph.serializer.plain_text.jackson.TypeMappe
 public interface JacksonDeserializer<T> {
 
 	Logger logger = LoggerFactory.getLogger(JacksonDeserializer.class);
+
+	String MAP_ENVELOPE_TYPE = "ARGI_MAP";
+
+	String MAP_CLASS_PROPERTY = "mapClass";
+
+	String MAP_ENTRIES_PROPERTY = "entries";
+
+	String MAP_ENTRY_KEY_PROPERTY = "key";
+
+	String MAP_ENTRY_VALUE_PROPERTY = "value";
 
 	/**
 	 * Cache for deserialization strategies to avoid repeated trial-and-error.
@@ -273,6 +284,9 @@ public interface JacksonDeserializer<T> {
 					var type = valueNode.get(TYPE_PROPERTY).asText();
 					
 					// Special handling for GraphResponse, ChatResponse and CompletableFuture
+					if (MAP_ENVELOPE_TYPE.equals(type)) {
+						yield mapFromEnvelope(valueNode, objectMapper, typeMapper);
+					}
 					if ("GraphResponse".equals(type)) {
 						yield reconstructGraphResponse(valueNode, objectMapper, typeMapper);
 					}
@@ -286,32 +300,32 @@ public interface JacksonDeserializer<T> {
 					}
 					
 					// Use unified deserialization strategy for all registered types
-					var ref = typeMapper.getReference(type)
-						.orElseThrow(() -> new IllegalStateException("Type not found: " + type));
-					ObjectNode copy = valueNode.deepCopy();
-					copy.remove(TYPE_PROPERTY);
-					copy.remove("@typeHint");
-					
-					// Get Class from TypeReference using ObjectMapper's TypeFactory
-					Class<?> targetClass = objectMapper.getTypeFactory().constructType(ref).getRawClass();
-					yield deserializeWithStrategy(copy, targetClass, objectMapper, typeMapper);
+					var ref = typeMapper.getReference(type);
+					if (ref.isPresent()) {
+						ObjectNode copy = valueNode.deepCopy();
+						copy.remove(TYPE_PROPERTY);
+						copy.remove("@typeHint");
+
+						// Get Class from TypeReference using ObjectMapper's TypeFactory
+						Class<?> targetClass = objectMapper.getTypeFactory().constructType(ref.get()).getRawClass();
+						yield deserializeWithStrategy(copy, targetClass, objectMapper, typeMapper);
+					}
 				}
 				if (valueNode.has("@class")) {
 					String className = valueNode.get("@class").asText();
 					if (!(typeHint != null && className.startsWith("java.util."))) {
-					ObjectNode copy = valueNode.deepCopy();
-					copy.remove("@class");
-					copy.remove("@typeHint");
-					try {
-						Class<?> clazz = Class.forName(className);
-						// Use unified deserialization strategy
-						yield deserializeWithStrategy(copy, clazz, objectMapper, typeMapper);
+						ObjectNode copy = valueNode.deepCopy();
+						copy.remove("@class");
+						copy.remove("@typeHint");
+						try {
+							Class<?> clazz = Class.forName(className);
+							// Use unified deserialization strategy
+							yield deserializeWithStrategy(copy, clazz, objectMapper, typeMapper);
+						}
+						catch (ClassNotFoundException ex) {
+							// Literal business payloads can use @class as an ordinary key.
+						}
 					}
-					catch (ClassNotFoundException ex) {
-						throw new IllegalStateException(
-								"Cannot instantiate class " + className + " for @class deserialization", ex);
-					}
-				}
 				}
 				if (typeHint != null) {
 					ObjectNode copy = valueNode.deepCopy();
@@ -324,8 +338,7 @@ public interface JacksonDeserializer<T> {
 						yield deserializeWithStrategy(copy, clazz, objectMapper, typeMapper);
 					}
 					catch (ClassNotFoundException ex) {
-						throw new IllegalStateException(
-								"Cannot instantiate class " + typeHint + " for @typeHint deserialization", ex);
+						// Literal business payloads can use @typeHint as an ordinary key.
 					}
 				}
 				Map<String, Object> result = new LinkedHashMap<>();
@@ -333,9 +346,6 @@ public interface JacksonDeserializer<T> {
 				while (fields.hasNext()) {
 					var entry = fields.next();
 					String key = entry.getKey();
-					if ("@class".equals(key) || "@type".equals(key) || "@typeHint".equals(key)) {
-						continue;
-					}
 					result.put(key, valueFromNode(entry.getValue(), objectMapper, typeMapper));
 				}
 				yield result;
@@ -370,6 +380,59 @@ public interface JacksonDeserializer<T> {
 			case BINARY -> valueNode.binaryValue();
 		};
 
+	}
+
+	static Map<Object, Object> mapFromEnvelope(JsonNode valueNode, ObjectMapper objectMapper, TypeMapper typeMapper)
+			throws IOException {
+		Map<Object, Object> result = instantiateMap(valueNode.path(MAP_CLASS_PROPERTY).asText(null));
+		JsonNode entries = unwrapTypedArray(valueNode.get(MAP_ENTRIES_PROPERTY));
+		if (entries == null || !entries.isArray()) {
+			return result;
+		}
+		for (JsonNode entry : entries) {
+			entry = unwrapTypedArray(entry);
+			Object key;
+			Object value;
+			if (entry.isArray() && entry.size() == 2) {
+				key = valueFromNode(entry.get(0), objectMapper, typeMapper);
+				value = valueFromNode(entry.get(1), objectMapper, typeMapper);
+			}
+			else if (entry.isObject()) {
+				key = valueFromNode(entry.get(MAP_ENTRY_KEY_PROPERTY), objectMapper, typeMapper);
+				value = valueFromNode(entry.get(MAP_ENTRY_VALUE_PROPERTY), objectMapper, typeMapper);
+			}
+			else {
+				continue;
+			}
+			result.put(key, value);
+		}
+		return result;
+	}
+
+	private static JsonNode unwrapTypedArray(JsonNode node) {
+		if (node != null && node.isArray() && node.size() == 2 && node.get(0).isTextual()
+				&& node.get(0).asText().startsWith("[")) {
+			return node.get(1);
+		}
+		return node;
+	}
+
+	private static Map<Object, Object> instantiateMap(String className) {
+		if (className != null) {
+			try {
+				Class<?> mapClass = Class.forName(className);
+				if (Map.class.isAssignableFrom(mapClass) && !mapClass.isInterface()
+						&& !Modifier.isAbstract(mapClass.getModifiers())) {
+					@SuppressWarnings("unchecked")
+					Map<Object, Object> result = (Map<Object, Object>) mapClass.getDeclaredConstructor().newInstance();
+					return result;
+				}
+			}
+			catch (ReflectiveOperationException | LinkageError ex) {
+				// Fall back to an insertion-ordered map for non-instantiable custom maps.
+			}
+		}
+		return new LinkedHashMap<>();
 	}
 
 	private static Object deserializeArrayNode(JsonNode valueNode, ObjectMapper objectMapper, TypeMapper typeMapper)

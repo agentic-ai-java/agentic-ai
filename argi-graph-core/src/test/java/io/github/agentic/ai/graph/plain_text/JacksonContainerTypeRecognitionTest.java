@@ -149,6 +149,30 @@ class JacksonContainerTypeRecognitionTest {
         assertEquals("value", inner.get("field"));
     }
 
+    @Test
+    void fallbackToGenericObjectWhenUnknownTypeMarkerIsBusinessData() throws Exception {
+        String json = "{" +
+                "\"payload\": {" +
+                "\"@type\": \"invoice\"," +
+                "\"@class\": \"customer-facing\"," +
+                "\"@typeHint\": \"external-system\"," +
+                "\"id\": \"123\"" +
+                "}" +
+                "}";
+
+        ObjectMapper mapper = serializer.objectMapper();
+        Map<String, Object> data = mapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+
+        assertNotNull(data);
+        assertTrue(data.get("payload") instanceof Map<?,?>);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payload = (Map<String, Object>) data.get("payload");
+        assertEquals("invoice", payload.get("@type"));
+        assertEquals("customer-facing", payload.get("@class"));
+        assertEquals("external-system", payload.get("@typeHint"));
+        assertEquals("123", payload.get("id"));
+    }
+
     /**
      * Simple non-final POJO with public fields to let Jackson bind without setters.
      */

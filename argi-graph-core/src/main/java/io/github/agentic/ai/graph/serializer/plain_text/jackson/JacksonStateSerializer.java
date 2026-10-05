@@ -57,6 +57,16 @@ public abstract class JacksonStateSerializer extends PlainTextStateSerializer {
 	private static final TypeReference<Map<String, Object>> STATE_TYPE = new TypeReference<>() {
 	};
 
+	private static final String MAP_ENVELOPE_TYPE = JacksonDeserializer.MAP_ENVELOPE_TYPE;
+
+	private static final String MAP_CLASS_PROPERTY = JacksonDeserializer.MAP_CLASS_PROPERTY;
+
+	private static final String MAP_ENTRIES_PROPERTY = JacksonDeserializer.MAP_ENTRIES_PROPERTY;
+
+	private static final String MAP_ENTRY_KEY_PROPERTY = JacksonDeserializer.MAP_ENTRY_KEY_PROPERTY;
+
+	private static final String MAP_ENTRY_VALUE_PROPERTY = JacksonDeserializer.MAP_ENTRY_VALUE_PROPERTY;
+
 	protected final ObjectMapper objectMapper;
 
 	protected TypeMapper typeMapper = new TypeMapper();
@@ -144,7 +154,7 @@ public abstract class JacksonStateSerializer extends PlainTextStateSerializer {
 		}
 		Map<String, Object> result = new LinkedHashMap<>(state.size());
 		state.forEach((key, value) -> result.put(key, normalizeValue(value)));
-		return result;
+		return hasTypeMarkerKey(state) ? mapEnvelope(state.getClass(), result) : result;
 	}
 
 	/**
@@ -183,7 +193,7 @@ public abstract class JacksonStateSerializer extends PlainTextStateSerializer {
 					changed = true;
 				}
 			}
-			return changed ? result : value;
+			return hasTypeMarkerKey(map) ? mapEnvelope(map.getClass(), result) : changed ? result : value;
 		}
 
 		// 5. Collection → shallow scan for GraphResponse/ChatResponse/CompletableFuture
@@ -403,7 +413,7 @@ public abstract class JacksonStateSerializer extends PlainTextStateSerializer {
 			Map<?, ?> map = (Map<?, ?>) value;
 			Map<Object, Object> normalized = new LinkedHashMap<>(map.size());
 			map.forEach((k, v) -> normalized.put(k, deepNormalizeValue(v)));
-			return normalized;
+			return hasTypeMarkerKey(map) ? mapEnvelope(map.getClass(), normalized) : normalized;
 		}
 
 		// 5. Collection → recursive normalization
@@ -470,6 +480,23 @@ public abstract class JacksonStateSerializer extends PlainTextStateSerializer {
 		}
 
 		return snapshot;
+	}
+
+	private boolean hasTypeMarkerKey(Map<?, ?> map) {
+		return map.containsKey("@class") || map.containsKey("@type") || map.containsKey("@typeHint");
+	}
+
+	private Map<String, Object> mapEnvelope(Class<?> mapClass, Map<?, ?> map) {
+		Map<String, Object> envelope = new LinkedHashMap<>();
+		envelope.put("@type", MAP_ENVELOPE_TYPE);
+		envelope.put(MAP_CLASS_PROPERTY, mapClass.getName());
+		Object[] entries = new Object[map.size()];
+		int index = 0;
+		for (Map.Entry<?, ?> entry : map.entrySet()) {
+			entries[index++] = new Object[] { entry.getKey(), entry.getValue() };
+		}
+		envelope.put(MAP_ENTRIES_PROPERTY, entries);
+		return envelope;
 	}
 
 }
