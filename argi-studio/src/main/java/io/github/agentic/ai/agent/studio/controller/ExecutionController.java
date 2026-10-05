@@ -45,6 +45,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.util.CollectionUtils;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -188,7 +193,7 @@ public class ExecutionController {
 					.addMetadata("user_id", request.userId)
 					.build();
 
-			return executeAgent(request.newMessage.toUserMessage(), agent, runnableConfig);
+			return executeAgent(request.newMessage.toUserMessage(), agent, runnableConfig, request.stateDelta);
 		}
 		catch (Exception e) {
 			log.error("Error during agent run for session {}", request.threadId, e);
@@ -252,7 +257,7 @@ public class ExecutionController {
 					.addHumanFeedback(metadataBuilder.build())
 					.build();
 
-			return executeAgent(null, agent, runnableConfig);
+			return executeAgent(null, agent, runnableConfig, request.stateDelta);
 		}
 		catch (Exception e) {
 			log.error("Error during agent run for session {}", request.threadId, e);
@@ -261,11 +266,37 @@ public class ExecutionController {
 	}
 
 	@NonNull
-	private Flux<ServerSentEvent<String>> executeAgent(UserMessage userMessage, Agent agent, RunnableConfig runnableConfig) throws GraphRunnerException {
+	private Flux<ServerSentEvent<String>> executeAgent(UserMessage userMessage, Agent agent, RunnableConfig runnableConfig,
+			Map<String, Object> stateDelta) throws GraphRunnerException {
 
 		Flux<NodeOutput> agentStream;
 
-		if (userMessage != null) {
+		if (!CollectionUtils.isEmpty(stateDelta)) {
+			Map<String, Object> updates = new HashMap<>(stateDelta);
+			Map<String, Object> inputs = new HashMap<>(updates);
+			UserMessage message = userMessage != null ? userMessage : new UserMessage("");
+			inputs.put("messages", List.of(message));
+			inputs.put("input", message.getText());
+			if (userMessage != null) {
+				agentStream = agent.stream(inputs, runnableConfig);
+			}
+			else {
+				agentStream = Flux.defer(() -> {
+					try {
+						var graph = agent.getAndCompileGraph();
+						if (graph.stateOf(runnableConfig).isEmpty()) {
+							return agent.stream(inputs, runnableConfig);
+						}
+						RunnableConfig updatedConfig = graph.updateState(runnableConfig, updates);
+						return agent.stream("", updatedConfig);
+					}
+					catch (Exception e) {
+						return Flux.error(e);
+					}
+				});
+			}
+		}
+		else if (userMessage != null) {
 			agentStream = agent.stream(userMessage, runnableConfig);
 		}
 		else {
