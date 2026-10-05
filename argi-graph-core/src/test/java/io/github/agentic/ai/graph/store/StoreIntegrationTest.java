@@ -106,6 +106,50 @@ public class StoreIntegrationTest {
 		}
 	}
 
+	@Test
+	void listNamespacesWithPrefixOnlyReturnsNamespacesStartingWithPrefixAcrossImplementations() {
+		List<Store> stores = Arrays.asList(new MemoryStore(), new FileSystemStore(tempDir.resolve("prefix-contract")),
+				createDatabaseStore(), new RedisStore(), new MongoStore());
+
+		for (Store store : stores) {
+			setupHierarchicalTestData(store);
+
+			assertThat(store.listNamespaces(NamespaceListRequest.builder().build()))
+				.contains("company", "company/engineering", "company/engineering/backend",
+						"company/engineering/frontend", "company/marketing", "company/hr");
+
+			assertThat(store.listNamespaces(NamespaceListRequest.builder()
+				.namespace(List.of("company", "engineering"))
+				.build()))
+				.containsExactly("company/engineering", "company/engineering/backend", "company/engineering/frontend");
+
+			assertThat(store.listNamespaces(NamespaceListRequest.builder()
+				.namespace(List.of("company", "engineering"))
+				.maxDepth(1)
+				.build()))
+				.isEmpty();
+			assertThat(store.listNamespaces(NamespaceListRequest.builder()
+				.namespace(List.of("company", "engineering"))
+				.maxDepth(2)
+				.build()))
+				.containsExactly("company/engineering");
+			assertThat(store.listNamespaces(NamespaceListRequest.builder()
+				.namespace(List.of("company", "engineering"))
+				.maxDepth(3)
+				.build()))
+				.containsExactly("company/engineering", "company/engineering/backend", "company/engineering/frontend");
+
+			assertThat(store.listNamespaces(NamespaceListRequest.builder()
+				.namespace(List.of("company", "engineering"))
+				.offset(1)
+				.limit(1)
+				.build()))
+				.containsExactly("company/engineering/backend");
+
+			store.clear();
+		}
+	}
+
 	private void testStoreBasicOperations(Store store) {
 		// Test data
 		List<String> namespace = List.of("users", "user123");

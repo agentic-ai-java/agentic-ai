@@ -189,8 +189,9 @@ public class RedisStore extends BaseStore {
 				// Generate all possible namespace paths up to maxDepth
 				int maxDepth = namespaceRequest.getMaxDepth();
 				int depth = (maxDepth == -1) ? itemNamespace.size() : Math.min(maxDepth, itemNamespace.size());
+				int startDepth = prefixFilter.isEmpty() ? 1 : prefixFilter.size();
 
-				for (int i = 1; i <= depth; i++) {
+				for (int i = startDepth; i <= depth; i++) {
 					String namespacePath = String.join("/", itemNamespace.subList(0, i));
 					namespaceSet.add(namespacePath);
 				}
