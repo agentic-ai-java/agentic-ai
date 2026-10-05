@@ -628,15 +628,17 @@ public interface JacksonDeserializer<T> {
 		Map<String, Object> metadata = new java.util.LinkedHashMap<>();
 		if (valueNode.has("metadata")) {
 			JsonNode metadataNode = valueNode.get("metadata");
-			if (metadataNode.isObject()) {
-				var fields = metadataNode.fields();
-				while (fields.hasNext()) {
-					var entry = fields.next();
-					String key = entry.getKey();
-					if ("@class".equals(key) || "@type".equals(key) || "@typeHint".equals(key)) {
+			boolean legacyRawMetadata = !isMapEnvelope(metadataNode);
+			Object restoredMetadata = valueFromNode(metadataNode, objectMapper, typeMapper);
+			if (restoredMetadata instanceof Map<?, ?> metadataMap) {
+				for (Map.Entry<?, ?> entry : metadataMap.entrySet()) {
+					if (!(entry.getKey() instanceof String key)) {
 						continue;
 					}
-					metadata.put(key, valueFromNode(entry.getValue(), objectMapper, typeMapper));
+					if (legacyRawMetadata && isTypeMarkerKey(key)) {
+						continue;
+					}
+					metadata.put(key, entry.getValue());
 				}
 			}
 		}
@@ -730,6 +732,10 @@ public interface JacksonDeserializer<T> {
 			// Ignore and fall through to default
 		}
 		return new RuntimeException(message + " (original: " + exceptionClass + ")");
+	}
+
+	private static boolean isTypeMarkerKey(String key) {
+		return "@class".equals(key) || "@type".equals(key) || "@typeHint".equals(key);
 	}
 
 	/**

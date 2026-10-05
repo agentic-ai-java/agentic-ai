@@ -16,6 +16,7 @@
 package io.github.agentic.ai.graph;
 
 import io.github.agentic.ai.graph.serializer.plain_text.jackson.SpringAIJacksonStateSerializer;
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -132,6 +133,63 @@ public class GraphResponseSerializationRoundTripTest {
 			"Nested GraphResponse should preserve type");
 		
 		assertEquals("data", restoredContainer.get("other"), "Other values should be preserved");
+	}
+
+	@Test
+	void graphResponseMetadataShouldPreserveBusinessTypeMarkers() throws Exception {
+		OverAllState originalState = new OverAllState();
+		GraphResponse<?> response = GraphResponse.done("x", Map.of(
+				"@type", "invoice",
+				"nested", Map.of("@class", "external")
+		));
+		originalState.updateState(Map.of("response", response));
+
+		SpringAIJacksonStateSerializer serializer = new SpringAIJacksonStateSerializer(OverAllState::new);
+		OverAllState restoredState = serializer.cloneObject(originalState);
+
+		Object restoredValue = restoredState.value("response").orElse(null);
+		assertNotNull(restoredValue, "Value should not be null");
+		assertTrue(restoredValue instanceof GraphResponse, "Should still be GraphResponse");
+
+		@SuppressWarnings("unchecked")
+		GraphResponse<Object> restoredResponse = (GraphResponse<Object>) restoredValue;
+		Map<String, Object> restoredMetadata = restoredResponse.getAllMetadata();
+
+		assertEquals("invoice", restoredMetadata.get("@type"));
+		assertTrue(restoredMetadata.get("nested") instanceof Map<?,?>);
+		@SuppressWarnings("unchecked")
+		Map<String, Object> nested = (Map<String, Object>) restoredMetadata.get("nested");
+		assertEquals("external", nested.get("@class"));
+	}
+
+	@Test
+	void legacyRawGraphResponseMetadataMarkersShouldNotLeak() throws Exception {
+		String json = "{" +
+				"\"response\": {" +
+				"\"@type\": \"GraphResponse\"," +
+				"\"error\": false," +
+				"\"status\": \"done\"," +
+				"\"result\": \"x\"," +
+				"\"metadata\": {" +
+				"\"@class\": \"java.util.LinkedHashMap\"," +
+				"\"@typeHint\": \"java.util.Map\"," +
+				"\"key\": \"value\"" +
+				"}" +
+				"}" +
+				"}";
+
+		SpringAIJacksonStateSerializer serializer = new SpringAIJacksonStateSerializer(OverAllState::new);
+		Map<String, Object> data = serializer.objectMapper().readValue(json, new TypeReference<Map<String, Object>>() {});
+
+		Object restoredValue = data.get("response");
+		assertTrue(restoredValue instanceof GraphResponse, "Should restore legacy GraphResponse");
+		@SuppressWarnings("unchecked")
+		GraphResponse<Object> restoredResponse = (GraphResponse<Object>) restoredValue;
+		Map<String, Object> restoredMetadata = restoredResponse.getAllMetadata();
+
+		assertEquals("value", restoredMetadata.get("key"));
+		assertFalse(restoredMetadata.containsKey("@class"));
+		assertFalse(restoredMetadata.containsKey("@typeHint"));
 	}
 
 	@Test
