@@ -23,6 +23,7 @@ import io.github.agentic.ai.graph.agent.interceptor.ModelResponse;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
+import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +36,8 @@ import org.slf4j.LoggerFactory;
  *
  * Retries failed model calls with alternative models in sequence until
  * success or all models exhausted.
+ * Streaming responses are passed through unchanged. Errors emitted by the
+ * publisher after subscription are not handled by this interceptor.
  *
  * Example:
  * ModelFallbackInterceptor interceptor = ModelFallbackInterceptor.builder()
@@ -63,6 +66,9 @@ public class ModelFallbackInterceptor extends ModelInterceptor {
 		// Try primary model first
 		try {
 			ModelResponse modelResponse = handler.call(request);
+			if (modelResponse.getMessage() instanceof Flux<?>) {
+				return modelResponse;
+			}
 			Message message = (Message) modelResponse.getMessage();
 			
 			// Check if response contains error indicator
@@ -126,4 +132,3 @@ public class ModelFallbackInterceptor extends ModelInterceptor {
 		}
 	}
 }
-
