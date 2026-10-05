@@ -63,10 +63,6 @@ public abstract class JacksonStateSerializer extends PlainTextStateSerializer {
 
 	private static final String MAP_ENTRIES_PROPERTY = JacksonDeserializer.MAP_ENTRIES_PROPERTY;
 
-	private static final String MAP_ENTRY_KEY_PROPERTY = JacksonDeserializer.MAP_ENTRY_KEY_PROPERTY;
-
-	private static final String MAP_ENTRY_VALUE_PROPERTY = JacksonDeserializer.MAP_ENTRY_VALUE_PROPERTY;
-
 	protected final ObjectMapper objectMapper;
 
 	protected TypeMapper typeMapper = new TypeMapper();

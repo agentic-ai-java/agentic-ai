@@ -51,10 +51,6 @@ public interface JacksonDeserializer<T> {
 
 	String MAP_ENTRIES_PROPERTY = "entries";
 
-	String MAP_ENTRY_KEY_PROPERTY = "key";
-
-	String MAP_ENTRY_VALUE_PROPERTY = "value";
-
 	/**
 	 * Cache for deserialization strategies to avoid repeated trial-and-error.
 	 * Key: target class, Value: the most efficient deserialization strategy for that class
@@ -280,38 +276,41 @@ public interface JacksonDeserializer<T> {
 				if (valueNode.has("@typeHint")) {
 					typeHint = valueNode.get("@typeHint").asText();
 				}
+				boolean invalidMapEnvelopeMarker = hasMapEnvelopeMarker(valueNode) && !isMapEnvelope(valueNode);
 				if (valueNode.has(TYPE_PROPERTY)) {
 					var type = valueNode.get(TYPE_PROPERTY).asText();
 					
 					// Special handling for GraphResponse, ChatResponse and CompletableFuture
-					if (MAP_ENVELOPE_TYPE.equals(type)) {
+					if (isMapEnvelope(valueNode)) {
 						yield mapFromEnvelope(valueNode, objectMapper, typeMapper);
 					}
-					if ("GraphResponse".equals(type)) {
+					if (!invalidMapEnvelopeMarker && "GraphResponse".equals(type)) {
 						yield reconstructGraphResponse(valueNode, objectMapper, typeMapper);
 					}
-					if ("ChatResponse".equals(type)) {
+					if (!invalidMapEnvelopeMarker && "ChatResponse".equals(type)) {
 						// ChatResponse cannot be reconstructed (no default constructor),
 						// return null as it should not be persisted in state
 						yield null;
 					}
-					if ("CompletableFuture".equals(type)) {
+					if (!invalidMapEnvelopeMarker && "CompletableFuture".equals(type)) {
 						yield reconstructCompletableFuture(valueNode, objectMapper, typeMapper);
 					}
 					
 					// Use unified deserialization strategy for all registered types
-					var ref = typeMapper.getReference(type);
-					if (ref.isPresent()) {
-						ObjectNode copy = valueNode.deepCopy();
-						copy.remove(TYPE_PROPERTY);
-						copy.remove("@typeHint");
+					if (!invalidMapEnvelopeMarker) {
+						var ref = typeMapper.getReference(type);
+						if (ref.isPresent()) {
+							ObjectNode copy = valueNode.deepCopy();
+							copy.remove(TYPE_PROPERTY);
+							copy.remove("@typeHint");
 
-						// Get Class from TypeReference using ObjectMapper's TypeFactory
-						Class<?> targetClass = objectMapper.getTypeFactory().constructType(ref.get()).getRawClass();
-						yield deserializeWithStrategy(copy, targetClass, objectMapper, typeMapper);
+							// Get Class from TypeReference using ObjectMapper's TypeFactory
+							Class<?> targetClass = objectMapper.getTypeFactory().constructType(ref.get()).getRawClass();
+							yield deserializeWithStrategy(copy, targetClass, objectMapper, typeMapper);
+						}
 					}
 				}
-				if (valueNode.has("@class")) {
+				if (!invalidMapEnvelopeMarker && valueNode.has("@class")) {
 					String className = valueNode.get("@class").asText();
 					if (!(typeHint != null && className.startsWith("java.util."))) {
 						ObjectNode copy = valueNode.deepCopy();
@@ -327,7 +326,7 @@ public interface JacksonDeserializer<T> {
 						}
 					}
 				}
-				if (typeHint != null) {
+				if (!invalidMapEnvelopeMarker && typeHint != null) {
 					ObjectNode copy = valueNode.deepCopy();
 					copy.remove("@typeHint");
 					copy.remove(TYPE_PROPERTY);
@@ -397,16 +396,66 @@ public interface JacksonDeserializer<T> {
 				key = valueFromNode(entry.get(0), objectMapper, typeMapper);
 				value = valueFromNode(entry.get(1), objectMapper, typeMapper);
 			}
-			else if (entry.isObject()) {
-				key = valueFromNode(entry.get(MAP_ENTRY_KEY_PROPERTY), objectMapper, typeMapper);
-				value = valueFromNode(entry.get(MAP_ENTRY_VALUE_PROPERTY), objectMapper, typeMapper);
-			}
 			else {
 				continue;
 			}
 			result.put(key, value);
 		}
 		return result;
+	}
+
+	static boolean isMapEnvelope(JsonNode node) {
+		if (node == null || !node.isObject() || !node.has(TYPE_PROPERTY)
+				|| !MAP_ENVELOPE_TYPE.equals(node.get(TYPE_PROPERTY).asText())) {
+			return false;
+		}
+		if (!node.has(MAP_CLASS_PROPERTY) || !node.get(MAP_CLASS_PROPERTY).isTextual()
+				|| !isMapClass(node.get(MAP_CLASS_PROPERTY).asText())) {
+			return false;
+		}
+		if (hasUnexpectedMapEnvelopeFields(node)) {
+			return false;
+		}
+		JsonNode entries = unwrapTypedArray(node.get(MAP_ENTRIES_PROPERTY));
+		if (entries == null || !entries.isArray()) {
+			return false;
+		}
+		for (JsonNode entry : entries) {
+			JsonNode unwrapped = unwrapTypedArray(entry);
+			if (!unwrapped.isArray() || unwrapped.size() != 2) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static boolean hasMapEnvelopeMarker(JsonNode node) {
+		return node != null && node.isObject() && node.has(TYPE_PROPERTY)
+				&& MAP_ENVELOPE_TYPE.equals(node.get(TYPE_PROPERTY).asText());
+	}
+
+	private static boolean hasUnexpectedMapEnvelopeFields(JsonNode node) {
+		var fields = node.fieldNames();
+		while (fields.hasNext()) {
+			String field = fields.next();
+			if (TYPE_PROPERTY.equals(field) || MAP_CLASS_PROPERTY.equals(field) || MAP_ENTRIES_PROPERTY.equals(field)) {
+				continue;
+			}
+			if ("@class".equals(field) && isMapClass(node.get(field).asText())) {
+				continue;
+			}
+			return true;
+		}
+		return false;
+	}
+
+	private static boolean isMapClass(String className) {
+		try {
+			return Map.class.isAssignableFrom(Class.forName(className));
+		}
+		catch (ClassNotFoundException | LinkageError ex) {
+			return false;
+		}
 	}
 
 	private static JsonNode unwrapTypedArray(JsonNode node) {
