@@ -15,6 +15,7 @@
  */
 package io.github.agentic.ai.graph.agent.hook.modelcalllimit;
 
+import io.github.agentic.ai.graph.KeyStrategy;
 import io.github.agentic.ai.graph.OverAllState;
 import io.github.agentic.ai.graph.RunnableConfig;
 import io.github.agentic.ai.graph.agent.hook.HookPosition;
@@ -59,11 +60,8 @@ public class ModelCallLimitHook extends ModelHook {
 
 	@Override
 	public CompletableFuture<Map<String, Object>> beforeModel(OverAllState state, RunnableConfig config) {
-		// Read current counts from context
-		int threadModelCallCount = config.context().containsKey(THREAD_COUNT_KEY)
-				? (int) config.context().get(THREAD_COUNT_KEY) : 0;
-		int runModelCallCount = config.context().containsKey(RUN_COUNT_KEY)
-				? (int) config.context().get(RUN_COUNT_KEY) : 0;
+		int threadModelCallCount = threadModelCallCount(state, config);
+		int runModelCallCount = runModelCallCount(config);
 
 		// Check if limits are already exceeded (before making the call)
 		boolean threadLimitExceeded = threadLimit != null && threadModelCallCount >= threadLimit;
@@ -102,17 +100,39 @@ public class ModelCallLimitHook extends ModelHook {
 
 	@Override
 	public CompletableFuture<Map<String, Object>> afterModel(OverAllState state, RunnableConfig config) {
-		// Read current counts from context
-		int threadModelCallCount = config.context().containsKey(THREAD_COUNT_KEY)
-				? (int) config.context().get(THREAD_COUNT_KEY) : 0;
-		int runModelCallCount = config.context().containsKey(RUN_COUNT_KEY)
-				? (int) config.context().get(RUN_COUNT_KEY) : 0;
+		int threadModelCallCount = threadModelCallCount(state, config);
+		int runModelCallCount = runModelCallCount(config);
 
-		// Increment counters after the model call in context
-		config.context().put(THREAD_COUNT_KEY, threadModelCallCount + 1);
 		config.context().put(RUN_COUNT_KEY, runModelCallCount + 1);
 
+		if (hasExplicitThread(config)) {
+			return CompletableFuture.completedFuture(Map.of(THREAD_COUNT_KEY, threadModelCallCount + 1));
+		}
+
+		config.context().put(THREAD_COUNT_KEY, threadModelCallCount + 1);
 		return CompletableFuture.completedFuture(Map.of());
+	}
+
+	private int threadModelCallCount(OverAllState state, RunnableConfig config) {
+		if (hasExplicitThread(config)) {
+			return countFrom(state.value(THREAD_COUNT_KEY).orElse(0));
+		}
+		return countFrom(config.context().getOrDefault(THREAD_COUNT_KEY, 0));
+	}
+
+	private int runModelCallCount(RunnableConfig config) {
+		return countFrom(config.context().getOrDefault(RUN_COUNT_KEY, 0));
+	}
+
+	private boolean hasExplicitThread(RunnableConfig config) {
+		return config.threadId().isPresent();
+	}
+
+	private int countFrom(Object value) {
+		if (value instanceof Number number) {
+			return number.intValue();
+		}
+		return 0;
 	}
 
 	private String buildLimitExceededMessage(int threadCount, int runCount, Integer threadLimit, Integer runLimit) {
@@ -137,6 +157,11 @@ public class ModelCallLimitHook extends ModelHook {
 			return List.of(JumpTo.end);
 		}
 		return List.of();
+	}
+
+	@Override
+	public Map<String, KeyStrategy> getKeyStrategys() {
+		return Map.of(THREAD_COUNT_KEY, KeyStrategy.REPLACE);
 	}
 
 	public enum ExitBehavior {
