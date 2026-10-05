@@ -105,7 +105,11 @@ public class ModelCallLimitHook extends ModelHook {
 
 		config.context().put(RUN_COUNT_KEY, runModelCallCount + 1);
 
-		if (hasExplicitThread(config)) {
+		if (threadLimit == null) {
+			return CompletableFuture.completedFuture(Map.of());
+		}
+
+		if (shouldPersistThreadCount(config)) {
 			return CompletableFuture.completedFuture(Map.of(THREAD_COUNT_KEY, threadModelCallCount + 1));
 		}
 
@@ -114,7 +118,10 @@ public class ModelCallLimitHook extends ModelHook {
 	}
 
 	private int threadModelCallCount(OverAllState state, RunnableConfig config) {
-		if (hasExplicitThread(config)) {
+		if (threadLimit == null) {
+			return 0;
+		}
+		if (shouldPersistThreadCount(config)) {
 			return countFrom(state.value(THREAD_COUNT_KEY).orElse(0));
 		}
 		return countFrom(config.context().getOrDefault(THREAD_COUNT_KEY, 0));
@@ -124,7 +131,7 @@ public class ModelCallLimitHook extends ModelHook {
 		return countFrom(config.context().getOrDefault(RUN_COUNT_KEY, 0));
 	}
 
-	private boolean hasExplicitThread(RunnableConfig config) {
+	private boolean shouldPersistThreadCount(RunnableConfig config) {
 		return config.threadId().isPresent();
 	}
 
@@ -161,6 +168,9 @@ public class ModelCallLimitHook extends ModelHook {
 
 	@Override
 	public Map<String, KeyStrategy> getKeyStrategys() {
+		if (threadLimit == null) {
+			return Map.of();
+		}
 		return Map.of(THREAD_COUNT_KEY, KeyStrategy.REPLACE);
 	}
 

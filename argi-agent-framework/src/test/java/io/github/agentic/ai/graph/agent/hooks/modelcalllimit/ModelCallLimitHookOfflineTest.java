@@ -37,6 +37,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -80,6 +81,23 @@ class ModelCallLimitHookOfflineTest {
 		assertTrue(agent.invoke("second", config("run-thread")).isPresent());
 
 		assertEquals(2, chatModel.calls());
+	}
+
+	@Test
+	void runOnlyLimitDoesNotPersistThreadCounterInState() throws Exception {
+		CountingChatModel chatModel = new CountingChatModel();
+		ModelCallLimitHook hook = ModelCallLimitHook.builder()
+			.runLimit(1)
+			.exitBehavior(ModelCallLimitHook.ExitBehavior.ERROR)
+			.build();
+		ReactAgent agent = createAgent(hook, new MemorySaver(), chatModel);
+
+		Optional<OverAllState> result = agent.invoke("first", config("run-only-thread"));
+
+		assertTrue(result.isPresent());
+		assertFalse(result.get().data().keySet().stream()
+			.anyMatch(key -> key.contains("model_call_limit") && key.contains("thread_count")));
+		assertEquals(1, chatModel.calls());
 	}
 
 	@Test
