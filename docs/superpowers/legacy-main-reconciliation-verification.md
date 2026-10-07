@@ -3,9 +3,10 @@
 ## Status
 
 Runtime fixes and compatibility wiring are integrated and independently reviewed.
-Real API and both pinned Extensions wrapper checks have passed. Final whole-
-branch review and hygiene remain in progress. No publication is claimed by
-this intermediate record.
+Real API and both pinned Extensions wrapper checks have passed. Independent
+whole-branch review and scoped final-fix review are complete, with no unresolved
+findings. Hygiene checks passed. This is the verified candidate for normal main
+publication; no PR or artifact-registry publication is required.
 
 Core starting main: `57b699db9`.
 Extensions main: `ed078357` (no additional source work was missing there).
@@ -101,6 +102,22 @@ rename baseline; all three consumer files compiled with Java 17. Raw evidence:
 Historical wrapper evidence: `final-wrapper-extensions-baseline.log`.
 Current wrapper evidence: `final-wrapper-extensions-current.log`.
 
+## Final Review And Hygiene
+
+Whole-branch review covered 39 changed files and approved normal main merge with
+one nonblocking script-setup finding. The final fix `88de64826` split failed Git
+root/temporary-directory assignments from readonly declarations. Behavioral
+fixtures prove failures cannot create derived worktrees or invoke Maven.
+The scoped final review approved that correction with no new issues.
+The real five-module binary and Java 17 source gates passed again after it;
+raw evidence is `final-postreview-api-compatibility.log`.
+
+`make lint`, `make licenses-check`, Java lifecycle checks and whitespace checks
+passed. Gitleaks scanned a redacted tracked-HEAD archive and reported no leaks.
+Logs: `final-lint.log`, `final-licenses.log`, `final-core-secrets.log`.
+No TypeScript-backed diagnostic result is counted as Java type checking; Maven
+compilation and the consumer builds are the meaningful Java evidence.
+
 ## Residual Risk
 
 The observation fixture prints Micrometer AssertionError/onErrorDropped on both
@@ -112,6 +129,9 @@ No MQ, automatic Worker recovery, tool receipt protocol, exactly-once guarantee
 or automatic storage migration is introduced. Original worktrees, branches and
 the untracked `.codex/` and `agentic-spring-ai-studio/` directories are preserved.
 
-## Pending
+## Handoff
 
-Final whole-branch review/hygiene and normal main push/local synchronization.
+No local implementation, verification or review task remains open. The original
+main worktree's untracked files and all original feature/history worktrees are
+retained. Main publication uses a normal fast-forward after verifying the latest
+remote head; no force push or unrelated history merge is permitted.
