@@ -3,9 +3,9 @@
 ## Status
 
 Runtime fixes and compatibility wiring are integrated and independently reviewed.
-Real API and historical Extensions wrapper checks have passed. The current
-Extensions wrapper and final whole-branch review remain in progress. No
-publication is claimed by this intermediate record.
+Real API and both pinned Extensions wrapper checks have passed. Final whole-
+branch review and hygiene remain in progress. No publication is claimed by
+this intermediate record.
 
 Core starting main: `57b699db9`.
 Extensions main: `ed078357` (no additional source work was missing there).
@@ -72,9 +72,10 @@ Direct Extensions tests against that reviewed candidate:
 | `ed07835729405e7c8b97772d5b478d63ac1f9760` | 445 | 0 | 27 |
 
 Current Extensions includes all 19 real Valkey lease tests with no skips. These
-direct Maven runs are distinct from actual wrapper validation. The historical
-wrapper has now passed Core clean install followed by Extensions clean test;
-the current wrapper is running. Both use the same absolute isolated repository.
+direct Maven runs are distinct from actual wrapper validation. Both historical
+and current wrappers passed Core clean install followed by Extensions clean test.
+They used the same absolute isolated repository sequentially. Each wrapper
+re-ran all 1482 Core tests before the respective 399/445 Extensions tests.
 
 ## Compatibility Gates
 
@@ -98,6 +99,7 @@ gates sequentially. All five module jars were compatible against the ARGI
 rename baseline; all three consumer files compiled with Java 17. Raw evidence:
 `final-actual-api-compatibility.log`. No Make placeholder was counted as a check.
 Historical wrapper evidence: `final-wrapper-extensions-baseline.log`.
+Current wrapper evidence: `final-wrapper-extensions-current.log`.
 
 ## Residual Risk
 
@@ -112,5 +114,4 @@ the untracked `.codex/` and `agentic-spring-ai-studio/` directories are preserve
 
 ## Pending
 
-Current Extensions wrapper completion, final whole-branch review/hygiene, and
-normal main push/local synchronization.
+Final whole-branch review/hygiene and normal main push/local synchronization.
