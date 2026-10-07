@@ -22,6 +22,9 @@ patches against current main, never wholesale replacement with old source files.
 Serializer changes must preserve ordinary user keys without weakening framework
 object round trips. Configured thread limits persist; unconfigured limits must
 not introduce run-only counters into checkpoint state.
+Tool selection retains the existing total maxTools budget. Mandatory tools
+reserve its slots before ranked optional tools. Only mandatory tools alone may
+exceed that budget; they must not grant an additional optional-tool allowance.
 
 ## Compatibility Adoption
 

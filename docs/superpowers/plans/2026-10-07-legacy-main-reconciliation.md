@@ -77,7 +77,9 @@ git merge --no-ff --no-commit codex/core-review-fixes
 ```
 
 - [ ] Preserve mandatory tools even above maxTools; apply the cap to ranked
-  nonmandatory selections. Preserve streaming primary response, literal map
+  nonmandatory selections using the remaining total-budget slots. Mandatory
+  overflow alone is allowed, not maxTools optional tools plus mandatory tools.
+  Preserve streaming primary response, literal map
   payloads, framework object reconstruction and keyed thread counters.
 - [ ] Run focused GREEN, then full root tests once. Confirm RedisSaver retains
   history without restoring old timeout-to-empty or interrupt-losing reads.
