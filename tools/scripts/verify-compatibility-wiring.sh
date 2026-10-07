@@ -17,7 +17,9 @@
 
 set -euo pipefail
 
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-readonly REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SCRIPT_DIR
+REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel)"
+readonly REPO_ROOT
 
 python3 "${SCRIPT_DIR}/verify-compatibility-wiring.py" "${REPO_ROOT}"

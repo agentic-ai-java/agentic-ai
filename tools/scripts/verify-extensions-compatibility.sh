@@ -17,9 +17,12 @@
 
 set -euo pipefail
 
-readonly INVOCATION_DIR="$(pwd -P)"
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-readonly CORE_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
+INVOCATION_DIR="$(pwd -P)"
+readonly INVOCATION_DIR
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SCRIPT_DIR
+CORE_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
+readonly CORE_DIR
 extensions_dir="${1:-}"
 
 if [[ -z "${extensions_dir}" || ! -d "${extensions_dir}" || ! -f "${extensions_dir}/pom.xml" ]]; then
@@ -27,8 +30,8 @@ if [[ -z "${extensions_dir}" || ! -d "${extensions_dir}" || ! -f "${extensions_d
 	exit 2
 fi
 
-extensions_dir="$(cd "${extensions_dir}" && pwd -P)"
-readonly EXTENSIONS_DIR="${extensions_dir}"
+EXTENSIONS_DIR="$(cd "${extensions_dir}" && pwd -P)"
+readonly EXTENSIONS_DIR
 
 path_is_inside_target_tree() {
 	local root_dir="$1"
@@ -59,7 +62,9 @@ canonicalize_maven_repo() {
 	else
 		absolute_repo_path="${INVOCATION_DIR}/${repo_path}"
 	fi
-	mkdir -p "${absolute_repo_path}"
+	if ! mkdir -p "${absolute_repo_path}"; then
+		return 1
+	fi
 	( cd "${absolute_repo_path}" && pwd -P )
 }
 
@@ -71,11 +76,18 @@ fi
 readonly TMP_PARENT="${TMPDIR:-/tmp}"
 owned_maven_repo=0
 if [[ -n "${EXTENSIONS_COMPAT_MAVEN_REPO:-}" ]]; then
-	readonly MAVEN_REPO="$(canonicalize_maven_repo "${EXTENSIONS_COMPAT_MAVEN_REPO}")"
+	if ! MAVEN_REPO="$(canonicalize_maven_repo "${EXTENSIONS_COMPAT_MAVEN_REPO}")"; then
+		echo "Cannot prepare caller-owned Maven repository: ${EXTENSIONS_COMPAT_MAVEN_REPO}" >&2
+		exit 2
+	fi
 else
-	readonly MAVEN_REPO="$(mktemp -d "${TMP_PARENT%/}/argi-extensions-compat-m2.XXXXXX")"
+	if ! MAVEN_REPO="$(mktemp -d "${TMP_PARENT%/}/argi-extensions-compat-m2.XXXXXX")"; then
+		echo "Cannot create task-owned Maven repository under ${TMP_PARENT}" >&2
+		exit 2
+	fi
 	owned_maven_repo=1
 fi
+readonly MAVEN_REPO
 
 if path_is_inside_target_tree "${CORE_DIR}" "${MAVEN_REPO}"; then
 	echo "Caller-owned Maven repository must not live under a Core target/ directory: ${MAVEN_REPO}" >&2

@@ -274,6 +274,23 @@ test_extensions_wrapper_rejects_caller_owned_repo_under_maven_target_before_clea
 	[[ -d "${relative_target_repo}" ]] || fail "relative caller-owned target Maven repository was deleted"
 }
 
+test_extensions_wrapper_rejects_invalid_caller_owned_repo_before_maven() {
+	local core_dir="${TEST_TMP}/core-invalid-m2"
+	local extensions_dir="${TEST_TMP}/extensions-invalid-m2"
+	local log="${TEST_TMP}/extensions-invalid-m2.log"
+	local output
+	copy_extensions_script_fixture "${core_dir}"
+	create_extensions_checkout "${extensions_dir}"
+
+	output="$(COMMAND_LOG="${log}" EXTENSIONS_COMPAT_MAVEN_REPO="/dev/null/not-a-dir" \
+		"${core_dir}/tools/scripts/verify-extensions-compatibility.sh" "${extensions_dir}" 2>&1)" \
+		&& fail "wrapper accepted invalid caller-owned Maven repository"
+
+	assert_contains "${output}" "/dev/null/not-a-dir"
+	[[ ! -f "${log}" ]] || fail "Maven ran for invalid caller-owned Maven repository"
+	[[ -e /dev/null ]] || fail "/dev/null was unexpectedly removed"
+}
+
 test_extensions_wrapper_propagates_core_and_extensions_failures() {
 	local core_dir="${TEST_TMP}/core-failures"
 	local extensions_dir="${TEST_TMP}/extensions-failures"
@@ -380,6 +397,7 @@ main() {
 	test_extensions_wrapper_uses_maven_cmd_when_checkout_has_no_wrapper
 	test_extensions_wrapper_rejects_bad_checkouts_before_maven
 	test_extensions_wrapper_rejects_caller_owned_repo_under_maven_target_before_clean
+	test_extensions_wrapper_rejects_invalid_caller_owned_repo_before_maven
 	test_extensions_wrapper_propagates_core_and_extensions_failures
 	test_wiring_validator_accepts_current_semantics
 	test_wiring_validator_rejects_skipped_make_recipes
