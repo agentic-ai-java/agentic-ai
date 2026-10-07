@@ -148,11 +148,36 @@ test_extensions_wrapper_uses_one_repo_and_preserves_caller_owned_repo() {
 	create_extensions_checkout "${extensions_dir}"
 	mkdir -p "${maven_repo}"
 
+	local expected_repo
+	expected_repo="$(cd "${maven_repo}" && pwd -P)"
+
 	COMMAND_LOG="${log}" EXTENSIONS_COMPAT_MAVEN_REPO="${maven_repo}" \
 		"${core_dir}/tools/scripts/verify-extensions-compatibility.sh" "${extensions_dir}" >/dev/null
 
-	assert_file_lines "${log}" $'core|'"${maven_repo}"$'|-B -Dmaven.repo.local='"${maven_repo}"$' clean install\nextensions|'"${maven_repo}"$'|-B -f pom.xml -Dmaven.repo.local='"${maven_repo}"$' clean test'
-	[[ -d "${maven_repo}" ]] || fail "caller-owned Maven repository was removed"
+	assert_file_lines "${log}" $'core|'"${expected_repo}"$'|-B -Dmaven.repo.local='"${expected_repo}"$' clean install\nextensions|'"${expected_repo}"$'|-B -f pom.xml -Dmaven.repo.local='"${expected_repo}"$' clean test'
+	[[ -d "${expected_repo}" ]] || fail "caller-owned Maven repository was removed"
+}
+
+test_extensions_wrapper_canonicalizes_relative_caller_owned_repo() {
+	local core_dir="${TEST_TMP}/core-relative-repo"
+	local extensions_dir="${TEST_TMP}/extensions-relative-repo"
+	local invocation_dir="${TEST_TMP}/relative-invocation"
+	local log="${TEST_TMP}/extensions-relative-repo.log"
+	copy_extensions_script_fixture "${core_dir}"
+	create_extensions_checkout "${extensions_dir}"
+	mkdir -p "${invocation_dir}/relative-m2"
+
+	local expected_repo
+	expected_repo="$(cd "${invocation_dir}/relative-m2" && pwd -P)"
+
+	(
+		cd "${invocation_dir}"
+		COMMAND_LOG="${log}" EXTENSIONS_COMPAT_MAVEN_REPO="relative-m2" \
+			"${core_dir}/tools/scripts/verify-extensions-compatibility.sh" "${extensions_dir}" >/dev/null
+	)
+
+	assert_file_lines "${log}" $'core|'"${expected_repo}"$'|-B -Dmaven.repo.local='"${expected_repo}"$' clean install\nextensions|'"${expected_repo}"$'|-B -f pom.xml -Dmaven.repo.local='"${expected_repo}"$' clean test'
+	[[ -d "${expected_repo}" ]] || fail "relative caller-owned Maven repository was removed"
 }
 
 test_extensions_wrapper_cleans_default_owned_repo() {
@@ -199,6 +224,54 @@ test_extensions_wrapper_rejects_bad_checkouts_before_maven() {
 	touch "${unsafe_dir}/pom.xml"
 	expect_failure env COMMAND_LOG="${log}" "${core_dir}/tools/scripts/verify-extensions-compatibility.sh" "${unsafe_dir}" >/dev/null 2>&1
 	[[ ! -f "${log}" ]] || fail "Maven ran for unsafe Extensions checkout"
+	[[ -d "${unsafe_dir}" ]] || fail "unsafe root target checkout was deleted"
+
+	local module_target_dir="${core_dir}/argi-graph-core/target/argi-extensions"
+	mkdir -p "${module_target_dir}"
+	touch "${module_target_dir}/pom.xml"
+	expect_failure env COMMAND_LOG="${log}" "${core_dir}/tools/scripts/verify-extensions-compatibility.sh" "${module_target_dir}" >/dev/null 2>&1
+	[[ ! -f "${log}" ]] || fail "Maven ran for unsafe module target checkout"
+	[[ -d "${module_target_dir}" ]] || fail "unsafe module target checkout was deleted"
+
+	local starter_target_dir="${core_dir}/spring-boot-starters/argi-starter-builtin-nodes/target/argi-extensions"
+	mkdir -p "${starter_target_dir}"
+	touch "${starter_target_dir}/pom.xml"
+	expect_failure env COMMAND_LOG="${log}" "${core_dir}/tools/scripts/verify-extensions-compatibility.sh" "${starter_target_dir}" >/dev/null 2>&1
+	[[ ! -f "${log}" ]] || fail "Maven ran for unsafe starter target checkout"
+	[[ -d "${starter_target_dir}" ]] || fail "unsafe starter target checkout was deleted"
+}
+
+test_extensions_wrapper_rejects_caller_owned_repo_under_maven_target_before_clean() {
+	local core_dir="${TEST_TMP}/core-reject-m2-target"
+	local extensions_dir="${TEST_TMP}/extensions-reject-m2-target"
+	local log="${TEST_TMP}/extensions-reject-m2-target.log"
+	copy_extensions_script_fixture "${core_dir}"
+	create_extensions_checkout "${extensions_dir}"
+
+	local core_target_repo="${core_dir}/argi-graph-core/target/caller-owned-m2"
+	mkdir -p "${core_target_repo}"
+	expect_failure env COMMAND_LOG="${log}" EXTENSIONS_COMPAT_MAVEN_REPO="${core_target_repo}" \
+		"${core_dir}/tools/scripts/verify-extensions-compatibility.sh" "${extensions_dir}" >/dev/null 2>&1
+	[[ ! -f "${log}" ]] || fail "Maven ran for caller-owned Core target Maven repository"
+	[[ -d "${core_target_repo}" ]] || fail "caller-owned Core target Maven repository was deleted"
+
+	local extensions_target_repo="${extensions_dir}/target/caller-owned-m2"
+	mkdir -p "${extensions_target_repo}"
+	expect_failure env COMMAND_LOG="${log}" EXTENSIONS_COMPAT_MAVEN_REPO="${extensions_target_repo}" \
+		"${core_dir}/tools/scripts/verify-extensions-compatibility.sh" "${extensions_dir}" >/dev/null 2>&1
+	[[ ! -f "${log}" ]] || fail "Maven ran for caller-owned Extensions target Maven repository"
+	[[ -d "${extensions_target_repo}" ]] || fail "caller-owned Extensions target Maven repository was deleted"
+
+	local invocation_dir="${core_dir}/argi-agent-framework"
+	local relative_target_repo="${invocation_dir}/target/caller-owned-m2"
+	mkdir -p "${relative_target_repo}"
+	(
+		cd "${invocation_dir}"
+		expect_failure env COMMAND_LOG="${log}" EXTENSIONS_COMPAT_MAVEN_REPO="target/caller-owned-m2" \
+			"${core_dir}/tools/scripts/verify-extensions-compatibility.sh" "${extensions_dir}" >/dev/null 2>&1
+	)
+	[[ ! -f "${log}" ]] || fail "Maven ran for relative caller-owned target Maven repository"
+	[[ -d "${relative_target_repo}" ]] || fail "relative caller-owned target Maven repository was deleted"
 }
 
 test_extensions_wrapper_propagates_core_and_extensions_failures() {
@@ -302,9 +375,11 @@ main() {
 	test_make_compatibility_check_runs_real_gates_sequentially
 	test_make_compatibility_check_propagates_binary_failure
 	test_extensions_wrapper_uses_one_repo_and_preserves_caller_owned_repo
+	test_extensions_wrapper_canonicalizes_relative_caller_owned_repo
 	test_extensions_wrapper_cleans_default_owned_repo
 	test_extensions_wrapper_uses_maven_cmd_when_checkout_has_no_wrapper
 	test_extensions_wrapper_rejects_bad_checkouts_before_maven
+	test_extensions_wrapper_rejects_caller_owned_repo_under_maven_target_before_clean
 	test_extensions_wrapper_propagates_core_and_extensions_failures
 	test_wiring_validator_accepts_current_semantics
 	test_wiring_validator_rejects_skipped_make_recipes

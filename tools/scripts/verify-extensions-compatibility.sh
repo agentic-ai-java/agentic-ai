@@ -17,6 +17,7 @@
 
 set -euo pipefail
 
+readonly INVOCATION_DIR="$(pwd -P)"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly CORE_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd -P)"
 extensions_dir="${1:-}"
@@ -29,21 +30,60 @@ fi
 extensions_dir="$(cd "${extensions_dir}" && pwd -P)"
 readonly EXTENSIONS_DIR="${extensions_dir}"
 
-case "${EXTENSIONS_DIR}" in
-	"${CORE_DIR}/target" | "${CORE_DIR}/target/"*)
-		echo "Extensions checkout must not live under Core target/: ${EXTENSIONS_DIR}" >&2
-		exit 2
-		;;
-esac
+path_is_inside_target_tree() {
+	local root_dir="$1"
+	local candidate_path="$2"
+	local relative_path
+
+	case "${candidate_path}" in
+		"${root_dir}")
+			return 1
+			;;
+		"${root_dir}/"*)
+			relative_path="${candidate_path#"${root_dir}/"}"
+			;;
+		*)
+			return 1
+			;;
+	esac
+
+	[[ "${relative_path}" == "target" || "${relative_path}" == target/* || "${relative_path}" == */target || "${relative_path}" == */target/* ]]
+}
+
+canonicalize_maven_repo() {
+	local repo_path="$1"
+	local absolute_repo_path
+
+	if [[ "${repo_path}" == /* ]]; then
+		absolute_repo_path="${repo_path}"
+	else
+		absolute_repo_path="${INVOCATION_DIR}/${repo_path}"
+	fi
+	mkdir -p "${absolute_repo_path}"
+	( cd "${absolute_repo_path}" && pwd -P )
+}
+
+if path_is_inside_target_tree "${CORE_DIR}" "${EXTENSIONS_DIR}"; then
+	echo "Extensions checkout must not live under a Core target/ directory: ${EXTENSIONS_DIR}" >&2
+	exit 2
+fi
 
 readonly TMP_PARENT="${TMPDIR:-/tmp}"
 owned_maven_repo=0
 if [[ -n "${EXTENSIONS_COMPAT_MAVEN_REPO:-}" ]]; then
-	readonly MAVEN_REPO="${EXTENSIONS_COMPAT_MAVEN_REPO}"
-	mkdir -p "${MAVEN_REPO}"
+	readonly MAVEN_REPO="$(canonicalize_maven_repo "${EXTENSIONS_COMPAT_MAVEN_REPO}")"
 else
 	readonly MAVEN_REPO="$(mktemp -d "${TMP_PARENT%/}/argi-extensions-compat-m2.XXXXXX")"
 	owned_maven_repo=1
+fi
+
+if path_is_inside_target_tree "${CORE_DIR}" "${MAVEN_REPO}"; then
+	echo "Caller-owned Maven repository must not live under a Core target/ directory: ${MAVEN_REPO}" >&2
+	exit 2
+fi
+if path_is_inside_target_tree "${EXTENSIONS_DIR}" "${MAVEN_REPO}"; then
+	echo "Caller-owned Maven repository must not live under an Extensions target/ directory: ${MAVEN_REPO}" >&2
+	exit 2
 fi
 
 cleanup() {
