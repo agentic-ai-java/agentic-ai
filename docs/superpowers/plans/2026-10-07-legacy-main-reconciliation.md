@@ -24,8 +24,11 @@ Extensions consumers. Keep equivalent source unchanged and archive future design
 ## Task 1: Adopt Runtime Fixes With Regression Evidence
 
 **Source:** codex/core-review-fixes, head b4f7eb3bd; current base 57b699db9.
-**Ownership:** only the 26 files in `git diff --name-only 57b699db9...b4f7eb3bd`,
-including observation README/test. No build/CI/POM or other source edits.
+**Ownership:** the 26 files in `git diff --name-only 57b699db9...b4f7eb3bd`,
+including observation README/test, plus package-private
+argi-graph-core/src/main/java/io/github/agentic/ai/graph/serializer/plain_text/jackson/MapEnvelopeSupport.java
+to hide new internal envelope fields/helpers from the public interface.
+No build/CI/POM or unrelated source edits.
 
 **Interfaces:** Existing model hook/interceptor, serializer, saver/store and
 Studio interfaces; no new public API. Preserve new guard/scope contracts.
@@ -84,6 +87,9 @@ git merge --no-ff --no-commit codex/core-review-fixes
 - [ ] Run focused GREEN, then full root tests once. Confirm RedisSaver retains
   history without restoring old timeout-to-empty or interrupt-losing reads.
   Confirm Studio deltas continue to use guarded public runtime entry points.
+- [ ] Keep new envelope constants and helpers in MapEnvelopeSupport, not the
+  public JacksonDeserializer interface. Preserve serialized envelope behavior;
+  private helper extraction must not add public/protected members or types.
 - [ ] Run whitespace/format/Checkstyle checks and sign off the scoped merge or
   patch commit. Write report with exact commands, RED/GREEN output and risks.
 
