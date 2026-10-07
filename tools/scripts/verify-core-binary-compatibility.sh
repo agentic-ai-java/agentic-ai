@@ -22,9 +22,11 @@ readonly JAPICMP_VERSION="${JAPICMP_VERSION:-0.23.1}"
 readonly REVISION="${REVISION:-2.1.0-dev}"
 readonly CORE_RUNTIME_MODULES=':argi-graph-core,:argi-agent-framework,:argi-studio,:argi-starter-graph-observation,:argi-starter-builtin-nodes'
 
-readonly REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+readonly REPO_ROOT
 readonly TMP_PARENT="${TMPDIR:-/tmp}"
-readonly COMPAT_TMP="$(mktemp -d "${TMP_PARENT%/}/agentic-core-binary-compat.XXXXXX")"
+COMPAT_TMP="$(mktemp -d "${TMP_PARENT%/}/agentic-core-binary-compat.XXXXXX")"
+readonly COMPAT_TMP
 readonly BASELINE_WORKTREE="${COMPAT_TMP}/baseline"
 readonly REPORT_DIR="${REPO_ROOT}/target/binary-compatibility"
 readonly ISOLATED_MAVEN_REPO="${BINARY_COMPAT_MAVEN_REPO:-${REPORT_DIR}/m2}"

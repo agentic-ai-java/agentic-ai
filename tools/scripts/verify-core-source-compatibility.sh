@@ -17,7 +17,8 @@
 
 set -euo pipefail
 
-readonly REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+readonly REPO_ROOT
 readonly COMPAT_REPO="${SOURCE_COMPAT_MAVEN_REPO:-${REPO_ROOT}/target/binary-compatibility/m2}"
 readonly SOURCE_COMPAT_MODULES=':argi-agent-framework,:argi-studio,:argi-starter-graph-observation,:argi-starter-builtin-nodes'
 readonly FIXTURE_POM="${REPO_ROOT}/tools/compatibility/legacy-api-consumer/pom.xml"

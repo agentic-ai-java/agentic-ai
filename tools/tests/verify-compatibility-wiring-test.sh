@@ -124,6 +124,102 @@ SCRIPT
 	chmod +x "${path}"
 }
 
+write_binary_setup_fake_git() {
+	local path="$1"
+	local repo_root="$2"
+	local log="$3"
+	local rev_parse_fails="$4"
+	cat > "${path}" <<SCRIPT
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "\${1:-}" == "rev-parse" && "\${2:-}" == "--show-toplevel" ]]; then
+	if [[ "${rev_parse_fails}" == "1" ]]; then
+		printf 'git-rev-parse-failed\n' >> "${log}"
+		exit 42
+	fi
+	printf '%s\n' "${repo_root}"
+	exit 0
+fi
+printf 'git|%s\n' "\$*" >> "${log}"
+if [[ "\$*" == *"worktree add"* ]]; then
+	exit 31
+fi
+exit 0
+SCRIPT
+	chmod +x "${path}"
+}
+
+write_failing_mktemp() {
+	local path="$1"
+	local log="$2"
+	cat > "${path}" <<SCRIPT
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'mktemp-failed|%s\n' "\$*" >> "${log}"
+exit 44
+SCRIPT
+	chmod +x "${path}"
+}
+
+copy_core_compat_script_fixture() {
+	local fixture="$1"
+	mkdir -p "${fixture}/tools/scripts"
+	cp "${REPO_ROOT}/tools/scripts/verify-core-binary-compatibility.sh" "${fixture}/tools/scripts/"
+	cp "${REPO_ROOT}/tools/scripts/verify-core-source-compatibility.sh" "${fixture}/tools/scripts/"
+	chmod +x "${fixture}"/tools/scripts/*.sh
+	write_fake_maven "${fixture}/mvnw" "core-compat" "CORE_COMPAT_MVN_FAIL"
+}
+
+test_binary_gate_stops_when_git_root_setup_fails() {
+	local fixture="${TEST_TMP}/binary-git-root-failure"
+	local bin_dir="${fixture}/bin"
+	local log="${fixture}/commands.log"
+	copy_core_compat_script_fixture "${fixture}"
+	mkdir -p "${bin_dir}"
+	write_binary_setup_fake_git "${bin_dir}/git" "${fixture}" "${log}" 1
+
+	expect_failure env PATH="${bin_dir}:${PATH}" COMMAND_LOG="${log}" BINARY_COMPAT_MAVEN_REPO="${fixture}/m2" \
+		"${fixture}/tools/scripts/verify-core-binary-compatibility.sh" >/dev/null 2>&1
+
+	assert_contains "$(cat "${log}")" "git-rev-parse-failed"
+	! grep -Fq "worktree add" "${log}" || fail "binary gate created a baseline worktree after git root setup failed"
+	! grep -Fq "core-compat|" "${log}" || fail "binary gate ran Maven after git root setup failed"
+}
+
+test_binary_gate_stops_when_tempdir_setup_fails() {
+	local fixture="${TEST_TMP}/binary-tempdir-failure"
+	local bin_dir="${fixture}/bin"
+	local log="${fixture}/commands.log"
+	copy_core_compat_script_fixture "${fixture}"
+	mkdir -p "${bin_dir}"
+	write_binary_setup_fake_git "${bin_dir}/git" "${fixture}" "${log}" 0
+	write_failing_mktemp "${bin_dir}/mktemp" "${log}"
+
+	expect_failure env PATH="${bin_dir}:${PATH}" COMMAND_LOG="${log}" BINARY_COMPAT_MAVEN_REPO="${fixture}/m2" \
+		"${fixture}/tools/scripts/verify-core-binary-compatibility.sh" >/dev/null 2>&1
+
+	assert_contains "$(cat "${log}")" "mktemp-failed|"
+	! grep -Fq "worktree add" "${log}" || fail "binary gate created a baseline worktree after mktemp setup failed"
+	! grep -Fq "core-compat|" "${log}" || fail "binary gate ran Maven after mktemp setup failed"
+}
+
+test_source_gate_stops_when_git_root_setup_fails() {
+	local fixture="${TEST_TMP}/source-git-root-failure"
+	local bin_dir="${fixture}/bin"
+	local log="${fixture}/commands.log"
+	local compat_repo="${fixture}/source-m2"
+	copy_core_compat_script_fixture "${fixture}"
+	mkdir -p "${bin_dir}"
+	write_binary_setup_fake_git "${bin_dir}/git" "${fixture}" "${log}" 1
+
+	expect_failure env PATH="${bin_dir}:${PATH}" COMMAND_LOG="${log}" SOURCE_COMPAT_MAVEN_REPO="${compat_repo}" \
+		"${fixture}/tools/scripts/verify-core-source-compatibility.sh" >/dev/null 2>&1
+
+	assert_contains "$(cat "${log}")" "git-rev-parse-failed"
+	[[ ! -d "${compat_repo}" ]] || fail "source gate created a Maven repository path after git root setup failed"
+	! grep -Fq "core-compat|" "${log}" || fail "source gate ran Maven after git root setup failed"
+}
+
 copy_extensions_script_fixture() {
 	local core_dir="$1"
 	mkdir -p "${core_dir}/tools/scripts" "${core_dir}/target"
@@ -391,6 +487,9 @@ test_wiring_validator_rejects_baseline_exclusions_and_workflow_semantics() {
 main() {
 	test_make_compatibility_check_runs_real_gates_sequentially
 	test_make_compatibility_check_propagates_binary_failure
+	test_binary_gate_stops_when_git_root_setup_fails
+	test_binary_gate_stops_when_tempdir_setup_fails
+	test_source_gate_stops_when_git_root_setup_fails
 	test_extensions_wrapper_uses_one_repo_and_preserves_caller_owned_repo
 	test_extensions_wrapper_canonicalizes_relative_caller_owned_repo
 	test_extensions_wrapper_cleans_default_owned_repo
