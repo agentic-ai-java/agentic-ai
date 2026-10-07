@@ -37,20 +37,19 @@ class ToolSelectionContractTest {
 	@Test
 	void mandatoryToolSurvivesTheLimit() {
 		ToolSelectionInterceptor interceptor = selection("{\"tools\":[\"selected_tool\"]}", 1, "weather_tool");
-		assertEquals(List.of("selected_tool", "weather_tool"),
-				select(interceptor, List.of("selected_tool", "weather_tool", "other_tool")));
+		assertEquals(List.of("weather_tool"), select(interceptor, List.of("selected_tool", "weather_tool", "other_tool")));
 	}
 
 	@Test
-	void mandatoryToolsDoNotConsumeRankedSlots() {
+	void mandatoryToolsReserveSlotsBeforeRankedTools() {
 		ToolSelectionInterceptor interceptor = selection("{\"tools\":[\"a\",\"b\"]}", 2, "c");
-		assertEquals(List.of("a", "b", "c"), select(interceptor, List.of("a", "b", "c", "d")));
+		assertEquals(List.of("a", "c"), select(interceptor, List.of("a", "b", "c", "d")));
 	}
 
 	@Test
 	void mandatoryToolsTakePrecedenceWhenTheyExceedTheLimit() {
 		ToolSelectionInterceptor interceptor = selection("{\"tools\":[\"selected_tool\"]}", 1, "weather_tool", "clock_tool");
-		assertEquals(List.of("selected_tool", "weather_tool", "clock_tool"),
+		assertEquals(List.of("weather_tool", "clock_tool"),
 				select(interceptor, List.of("selected_tool", "weather_tool", "clock_tool")));
 	}
 

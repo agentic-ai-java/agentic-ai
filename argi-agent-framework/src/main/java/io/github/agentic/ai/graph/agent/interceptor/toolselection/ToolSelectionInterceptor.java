@@ -164,14 +164,12 @@ public class ToolSelectionInterceptor extends ModelInterceptor {
 					selected.add(toolName);
 				}
 			}
-			int rankedSelections = 0;
 			for (String toolName : parseToolSelection(responseText)) {
-				if (toolNames.contains(toolName) && !alwaysInclude.contains(toolName)) {
-					if (maxTools != null && rankedSelections >= maxTools) {
-						break;
-					}
+				if (maxTools != null && selected.size() >= maxTools) {
+					break;
+				}
+				if (toolNames.contains(toolName)) {
 					selected.add(toolName);
-					rankedSelections++;
 				}
 			}
 
@@ -224,9 +222,9 @@ public class ToolSelectionInterceptor extends ModelInterceptor {
 		}
 
 		/**
-		 * Limits ranked model-selected tools. Available always-include tools are
-		 * preserved even when they make the final tool count exceed this value.
-		 * @param maxTools maximum number of non-mandatory selected tools
+		 * Limits the total selected tools unless available always-include tools alone
+		 * exceed the limit. Mandatory tools take precedence in that case.
+		 * @param maxTools maximum number of tools, excluding mandatory overflow
 		 * @return this builder
 		 */
 		public Builder maxTools(int maxTools) {
