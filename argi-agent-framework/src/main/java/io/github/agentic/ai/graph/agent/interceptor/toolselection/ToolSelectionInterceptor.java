@@ -224,7 +224,8 @@ public class ToolSelectionInterceptor extends ModelInterceptor {
 		/**
 		 * Limits the total selected tools unless available always-include tools alone
 		 * exceed the limit. Mandatory tools take precedence in that case.
-		 * @param maxTools maximum number of tools, excluding mandatory overflow
+		 * @param maxTools maximum total selected tools; mandatory tools count toward this
+		 * limit except mandatory-only overflow
 		 * @return this builder
 		 */
 		public Builder maxTools(int maxTools) {
