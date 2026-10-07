@@ -48,9 +48,9 @@ class GenericMapDeserializer extends StdDeserializer<Map<String, Object>> {
 		}
 
 		final ObjectNode node = (ObjectNode) jsonNode;
-		if (JacksonDeserializer.isMapEnvelope(node)) {
+		if (MapEnvelopeSupport.isMapEnvelope(node)) {
 			@SuppressWarnings({ "unchecked", "rawtypes" })
-			Map<String, Object> restored = (Map) JacksonDeserializer.mapFromEnvelope(node, mapper, typeMapper);
+			Map<String, Object> restored = (Map) MapEnvelopeSupport.mapFromEnvelope(node, mapper, typeMapper);
 			return restored;
 		}
 

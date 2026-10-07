@@ -17,7 +17,6 @@ package io.github.agentic.ai.graph.serializer.plain_text.jackson;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.lang.reflect.Modifier;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,12 +43,6 @@ import static io.github.agentic.ai.graph.serializer.plain_text.jackson.TypeMappe
 public interface JacksonDeserializer<T> {
 
 	Logger logger = LoggerFactory.getLogger(JacksonDeserializer.class);
-
-	String MAP_ENVELOPE_TYPE = "ARGI_MAP";
-
-	String MAP_CLASS_PROPERTY = "mapClass";
-
-	String MAP_ENTRIES_PROPERTY = "entries";
 
 	/**
 	 * Cache for deserialization strategies to avoid repeated trial-and-error.
@@ -276,13 +269,14 @@ public interface JacksonDeserializer<T> {
 				if (valueNode.has("@typeHint")) {
 					typeHint = valueNode.get("@typeHint").asText();
 				}
-				boolean invalidMapEnvelopeMarker = hasMapEnvelopeMarker(valueNode) && !isMapEnvelope(valueNode);
+				boolean invalidMapEnvelopeMarker = MapEnvelopeSupport.hasMapEnvelopeMarker(valueNode)
+						&& !MapEnvelopeSupport.isMapEnvelope(valueNode);
 				if (valueNode.has(TYPE_PROPERTY)) {
 					var type = valueNode.get(TYPE_PROPERTY).asText();
 					
 					// Special handling for GraphResponse, ChatResponse and CompletableFuture
-					if (isMapEnvelope(valueNode)) {
-						yield mapFromEnvelope(valueNode, objectMapper, typeMapper);
+					if (MapEnvelopeSupport.isMapEnvelope(valueNode)) {
+						yield MapEnvelopeSupport.mapFromEnvelope(valueNode, objectMapper, typeMapper);
 					}
 					if (!invalidMapEnvelopeMarker && "GraphResponse".equals(type)) {
 						yield reconstructGraphResponse(valueNode, objectMapper, typeMapper);
@@ -380,110 +374,6 @@ public interface JacksonDeserializer<T> {
 		};
 
 	}
-
-	static Map<Object, Object> mapFromEnvelope(JsonNode valueNode, ObjectMapper objectMapper, TypeMapper typeMapper)
-			throws IOException {
-		Map<Object, Object> result = instantiateMap(valueNode.path(MAP_CLASS_PROPERTY).asText(null));
-		JsonNode entries = unwrapTypedArray(valueNode.get(MAP_ENTRIES_PROPERTY));
-		if (entries == null || !entries.isArray()) {
-			return result;
-		}
-		for (JsonNode entry : entries) {
-			entry = unwrapTypedArray(entry);
-			Object key;
-			Object value;
-			if (entry.isArray() && entry.size() == 2) {
-				key = valueFromNode(entry.get(0), objectMapper, typeMapper);
-				value = valueFromNode(entry.get(1), objectMapper, typeMapper);
-			}
-			else {
-				continue;
-			}
-			result.put(key, value);
-		}
-		return result;
-	}
-
-	static boolean isMapEnvelope(JsonNode node) {
-		if (node == null || !node.isObject() || !node.has(TYPE_PROPERTY)
-				|| !MAP_ENVELOPE_TYPE.equals(node.get(TYPE_PROPERTY).asText())) {
-			return false;
-		}
-		if (!node.has(MAP_CLASS_PROPERTY) || !node.get(MAP_CLASS_PROPERTY).isTextual()
-				|| !isMapClass(node.get(MAP_CLASS_PROPERTY).asText())) {
-			return false;
-		}
-		if (hasUnexpectedMapEnvelopeFields(node)) {
-			return false;
-		}
-		JsonNode entries = unwrapTypedArray(node.get(MAP_ENTRIES_PROPERTY));
-		if (entries == null || !entries.isArray()) {
-			return false;
-		}
-		for (JsonNode entry : entries) {
-			JsonNode unwrapped = unwrapTypedArray(entry);
-			if (!unwrapped.isArray() || unwrapped.size() != 2) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	private static boolean hasMapEnvelopeMarker(JsonNode node) {
-		return node != null && node.isObject() && node.has(TYPE_PROPERTY)
-				&& MAP_ENVELOPE_TYPE.equals(node.get(TYPE_PROPERTY).asText());
-	}
-
-	private static boolean hasUnexpectedMapEnvelopeFields(JsonNode node) {
-		var fields = node.fieldNames();
-		while (fields.hasNext()) {
-			String field = fields.next();
-			if (TYPE_PROPERTY.equals(field) || MAP_CLASS_PROPERTY.equals(field) || MAP_ENTRIES_PROPERTY.equals(field)) {
-				continue;
-			}
-			if ("@class".equals(field) && isMapClass(node.get(field).asText())) {
-				continue;
-			}
-			return true;
-		}
-		return false;
-	}
-
-	private static boolean isMapClass(String className) {
-		try {
-			return Map.class.isAssignableFrom(Class.forName(className));
-		}
-		catch (ClassNotFoundException | LinkageError ex) {
-			return false;
-		}
-	}
-
-	private static JsonNode unwrapTypedArray(JsonNode node) {
-		if (node != null && node.isArray() && node.size() == 2 && node.get(0).isTextual()
-				&& node.get(0).asText().startsWith("[")) {
-			return node.get(1);
-		}
-		return node;
-	}
-
-	private static Map<Object, Object> instantiateMap(String className) {
-		if (className != null) {
-			try {
-				Class<?> mapClass = Class.forName(className);
-				if (Map.class.isAssignableFrom(mapClass) && !mapClass.isInterface()
-						&& !Modifier.isAbstract(mapClass.getModifiers())) {
-					@SuppressWarnings("unchecked")
-					Map<Object, Object> result = (Map<Object, Object>) mapClass.getDeclaredConstructor().newInstance();
-					return result;
-				}
-			}
-			catch (ReflectiveOperationException | LinkageError ex) {
-				// Fall back to an insertion-ordered map for non-instantiable custom maps.
-			}
-		}
-		return new LinkedHashMap<>();
-	}
-
 	private static Object deserializeArrayNode(JsonNode valueNode, ObjectMapper objectMapper, TypeMapper typeMapper)
 			throws IOException {
 		if (valueNode.size() == 2 && valueNode.get(0).isTextual()) {
@@ -628,7 +518,7 @@ public interface JacksonDeserializer<T> {
 		Map<String, Object> metadata = new java.util.LinkedHashMap<>();
 		if (valueNode.has("metadata")) {
 			JsonNode metadataNode = valueNode.get("metadata");
-			boolean legacyRawMetadata = !isMapEnvelope(metadataNode);
+			boolean legacyRawMetadata = !MapEnvelopeSupport.isMapEnvelope(metadataNode);
 			Object restoredMetadata = valueFromNode(metadataNode, objectMapper, typeMapper);
 			if (restoredMetadata instanceof Map<?, ?> metadataMap) {
 				for (Map.Entry<?, ?> entry : metadataMap.entrySet()) {

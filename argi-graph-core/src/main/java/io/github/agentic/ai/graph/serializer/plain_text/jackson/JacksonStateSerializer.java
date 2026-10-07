@@ -57,12 +57,6 @@ public abstract class JacksonStateSerializer extends PlainTextStateSerializer {
 	private static final TypeReference<Map<String, Object>> STATE_TYPE = new TypeReference<>() {
 	};
 
-	private static final String MAP_ENVELOPE_TYPE = JacksonDeserializer.MAP_ENVELOPE_TYPE;
-
-	private static final String MAP_CLASS_PROPERTY = JacksonDeserializer.MAP_CLASS_PROPERTY;
-
-	private static final String MAP_ENTRIES_PROPERTY = JacksonDeserializer.MAP_ENTRIES_PROPERTY;
-
 	protected final ObjectMapper objectMapper;
 
 	protected TypeMapper typeMapper = new TypeMapper();
@@ -421,14 +415,14 @@ public abstract class JacksonStateSerializer extends PlainTextStateSerializer {
 
 	private Map<String, Object> mapEnvelope(Class<?> mapClass, Map<?, ?> map) {
 		Map<String, Object> envelope = new LinkedHashMap<>();
-		envelope.put("@type", MAP_ENVELOPE_TYPE);
-		envelope.put(MAP_CLASS_PROPERTY, mapClass.getName());
+		envelope.put("@type", MapEnvelopeSupport.MAP_ENVELOPE_TYPE);
+		envelope.put(MapEnvelopeSupport.MAP_CLASS_PROPERTY, mapClass.getName());
 		Object[] entries = new Object[map.size()];
 		int index = 0;
 		for (Map.Entry<?, ?> entry : map.entrySet()) {
 			entries[index++] = new Object[] { entry.getKey(), entry.getValue() };
 		}
-		envelope.put(MAP_ENTRIES_PROPERTY, entries);
+		envelope.put(MapEnvelopeSupport.MAP_ENTRIES_PROPERTY, entries);
 		return envelope;
 	}
 
