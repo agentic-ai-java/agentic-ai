@@ -95,7 +95,8 @@ intent from e25f03ad7. Do not re-add ARGI-equivalent old tests or fixtures.
 **Files:** tools/make/java.mk, tools/scripts/verify-core-binary-compatibility.sh,
 new tools/scripts/verify-extensions-compatibility.sh,
 new tools/scripts/verify-compatibility-wiring.sh and behavior tests under
-tools/tests, .github/workflows/build-and-test.yml, docs/compatibility-policy.md.
+tools/tests, optional focused tools/scripts/verify-compatibility-wiring.py,
+.github/workflows/build-and-test.yml, docs/compatibility-policy.md.
 Historical baseline spec/plan from f7cba9dd5/b1edc14b7 may be preserved with
 provenance if still useful; do not overwrite current plans or fixtures.
 
@@ -133,7 +134,10 @@ compatibility-check:
 - [ ] Add a fail-closed wiring validator and actual helper execution tests. It
   must detect skipped compatibility recipes, missing jobs/build dependency,
   wrong baseline/type exclusions and unsafe checkout location. Use structured
-  parsing where available; tests must prove observable validator/CLI behavior.
+  YAML parsing through the existing yamllint/PyYAML development toolchain;
+  a small Python helper is allowed behind the Bash CLI. Tests must prove
+  observable validator/CLI behavior, including semantic YAML failures, not
+  match identical source strings. API CI runs make tools before the checker.
 - [ ] Restore API/Extensions jobs and build.needs. API checkout uses full history.
   Extensions job matrix pins the historical and current commits from the spec
   and checks them out at .ci/argi-extensions. Each job runs the actual verifier.

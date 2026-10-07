@@ -47,6 +47,9 @@ repository that must not be deleted by cleanup. Reject checkouts within Core's
 target directories before Core clean can erase them. Failure must propagate.
 Validate actual command execution/order/failure with controlled CLI fixtures,
 not only source-string assertions. No new production dependencies.
+The wiring CLI may use a focused Python helper with PyYAML from the existing
+yamllint development toolchain. API CI must install the existing tools before
+running that validator; no application dependency is added.
 
 ## Equivalent And Historical Work
 
