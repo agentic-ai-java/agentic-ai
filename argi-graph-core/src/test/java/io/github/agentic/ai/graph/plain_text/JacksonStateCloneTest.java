@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -86,6 +87,42 @@ class JacksonStateCloneTest {
 	}
 
 	@Test
+	void clonePreservesTopLevelBusinessKeysThatLookLikeTypeMarkers() throws Exception {
+		Map<String, Object> data = new LinkedHashMap<>();
+		data.put("@type", "invoice");
+		data.put("@class", "customer-facing");
+		data.put("@typeHint", "external-system");
+		data.put("id", "123");
+
+		Map<String, Object> cloned = serializer.cloneObject(data).data();
+
+		assertEquals(data, cloned);
+	}
+
+	@Test
+	void clonePreservesNestedBusinessMapsThatLookLikeTypedValues() throws Exception {
+		Map<String, Object> invoice = new InvoiceMap();
+		invoice.put("@type", "invoice");
+		invoice.put("@class", "customer-facing");
+		invoice.put("@typeHint", "external-system");
+		invoice.put("id", "123");
+		Map<String, Object> knownMarkerValues = new LinkedHashMap<>();
+		knownMarkerValues.put("@type", "SYSTEM");
+		knownMarkerValues.put("@class", UserMessage.class.getName());
+		knownMarkerValues.put("id", "456");
+
+		Map<String, Object> data = Map.of("payload", invoice, "knownMarkerValues", knownMarkerValues, "history",
+				List.of(invoice, new LinkedHashMap<>(Map.of("@type", "invoice-line", "sku", "SKU-1"))));
+
+		Map<String, Object> cloned = serializer.cloneObject(data).data();
+
+		assertInstanceOf(InvoiceMap.class, cloned.get("payload"));
+		assertEquals(invoice, cloned.get("payload"));
+		assertEquals(knownMarkerValues, cloned.get("knownMarkerValues"));
+		assertEquals(List.of(invoice, Map.of("@type", "invoice-line", "sku", "SKU-1")), cloned.get("history"));
+	}
+
+	@Test
 	void cloneUsesTheConfiguredStateFactoryAndRejectsNull() throws Exception {
 		AtomicInteger factoryCalls = new AtomicInteger();
 		var custom = new SpringAIJacksonStateSerializer(data -> {
@@ -95,6 +132,9 @@ class JacksonStateCloneTest {
 		assertEquals(Map.of("value", 1), custom.cloneObject(Map.of("value", 1)).data());
 		assertEquals(2, factoryCalls.get());
 		assertThrows(NullPointerException.class, () -> custom.cloneObject((OverAllState) null));
+	}
+
+	public static class InvoiceMap extends LinkedHashMap<String, Object> {
 	}
 
 }

@@ -26,9 +26,9 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -158,15 +158,21 @@ public class ToolSelectionInterceptor extends ModelInterceptor {
 			String responseText = response.getResult().getOutput().getText();
 
 			// Parse JSON response
-			Set<String> selected = parseToolSelection(responseText);
-
-			// Add always-include tools
-			selected.addAll(alwaysInclude);
-
-			// Limit to maxTools if specified
-			if (maxTools != null && selected.size() > maxTools) {
-				List<String> selectedList = new ArrayList<>(selected);
-				selected = new HashSet<>(selectedList.subList(0, maxTools));
+			Set<String> selected = new LinkedHashSet<>();
+			for (String toolName : toolNames) {
+				if (alwaysInclude.contains(toolName)) {
+					selected.add(toolName);
+				}
+			}
+			int rankedSelections = 0;
+			for (String toolName : parseToolSelection(responseText)) {
+				if (toolNames.contains(toolName) && !alwaysInclude.contains(toolName)) {
+					if (maxTools != null && rankedSelections >= maxTools) {
+						break;
+					}
+					selected.add(toolName);
+					rankedSelections++;
+				}
 			}
 
 			return selected;
@@ -182,7 +188,7 @@ public class ToolSelectionInterceptor extends ModelInterceptor {
 		try {
 			// Try to parse as JSON
 			ToolSelectionResponse response = objectMapper.readValue(responseText, ToolSelectionResponse.class);
-			return new HashSet<>(response.tools);
+			return new LinkedHashSet<>(response.tools);
 		}
 		catch (Exception e) {
 			// Fallback: extract tool names from text
@@ -217,6 +223,12 @@ public class ToolSelectionInterceptor extends ModelInterceptor {
 			return this;
 		}
 
+		/**
+		 * Limits ranked model-selected tools. Available always-include tools are
+		 * preserved even when they make the final tool count exceed this value.
+		 * @param maxTools maximum number of non-mandatory selected tools
+		 * @return this builder
+		 */
 		public Builder maxTools(int maxTools) {
 			if (maxTools <= 0) {
 				throw new IllegalArgumentException("maxTools must be > 0");

@@ -124,6 +124,7 @@ class ContextEditingTest {
 				.trigger(50)
 				.keep(0)
 				.clearAtLeast(100)
+				.clearToolInputs(true)
 				.tokenCounter(messages -> messages.stream()
 						.mapToInt(message -> message instanceof AssistantMessage ? 100 : 0)
 						.sum())

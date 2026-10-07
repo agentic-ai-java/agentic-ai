@@ -17,6 +17,7 @@ package io.github.agentic.ai.graph.serializer.plain_text.jackson;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.lang.reflect.Modifier;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,12 @@ import static io.github.agentic.ai.graph.serializer.plain_text.jackson.TypeMappe
 public interface JacksonDeserializer<T> {
 
 	Logger logger = LoggerFactory.getLogger(JacksonDeserializer.class);
+
+	String MAP_ENVELOPE_TYPE = "ARGI_MAP";
+
+	String MAP_CLASS_PROPERTY = "mapClass";
+
+	String MAP_ENTRIES_PROPERTY = "entries";
 
 	/**
 	 * Cache for deserialization strategies to avoid repeated trial-and-error.
@@ -269,51 +276,57 @@ public interface JacksonDeserializer<T> {
 				if (valueNode.has("@typeHint")) {
 					typeHint = valueNode.get("@typeHint").asText();
 				}
+				boolean invalidMapEnvelopeMarker = hasMapEnvelopeMarker(valueNode) && !isMapEnvelope(valueNode);
 				if (valueNode.has(TYPE_PROPERTY)) {
 					var type = valueNode.get(TYPE_PROPERTY).asText();
 					
 					// Special handling for GraphResponse, ChatResponse and CompletableFuture
-					if ("GraphResponse".equals(type)) {
+					if (isMapEnvelope(valueNode)) {
+						yield mapFromEnvelope(valueNode, objectMapper, typeMapper);
+					}
+					if (!invalidMapEnvelopeMarker && "GraphResponse".equals(type)) {
 						yield reconstructGraphResponse(valueNode, objectMapper, typeMapper);
 					}
-					if ("ChatResponse".equals(type)) {
+					if (!invalidMapEnvelopeMarker && "ChatResponse".equals(type)) {
 						// ChatResponse cannot be reconstructed (no default constructor),
 						// return null as it should not be persisted in state
 						yield null;
 					}
-					if ("CompletableFuture".equals(type)) {
+					if (!invalidMapEnvelopeMarker && "CompletableFuture".equals(type)) {
 						yield reconstructCompletableFuture(valueNode, objectMapper, typeMapper);
 					}
 					
 					// Use unified deserialization strategy for all registered types
-					var ref = typeMapper.getReference(type)
-						.orElseThrow(() -> new IllegalStateException("Type not found: " + type));
-					ObjectNode copy = valueNode.deepCopy();
-					copy.remove(TYPE_PROPERTY);
-					copy.remove("@typeHint");
-					
-					// Get Class from TypeReference using ObjectMapper's TypeFactory
-					Class<?> targetClass = objectMapper.getTypeFactory().constructType(ref).getRawClass();
-					yield deserializeWithStrategy(copy, targetClass, objectMapper, typeMapper);
+					if (!invalidMapEnvelopeMarker) {
+						var ref = typeMapper.getReference(type);
+						if (ref.isPresent()) {
+							ObjectNode copy = valueNode.deepCopy();
+							copy.remove(TYPE_PROPERTY);
+							copy.remove("@typeHint");
+
+							// Get Class from TypeReference using ObjectMapper's TypeFactory
+							Class<?> targetClass = objectMapper.getTypeFactory().constructType(ref.get()).getRawClass();
+							yield deserializeWithStrategy(copy, targetClass, objectMapper, typeMapper);
+						}
+					}
 				}
-				if (valueNode.has("@class")) {
+				if (!invalidMapEnvelopeMarker && valueNode.has("@class")) {
 					String className = valueNode.get("@class").asText();
 					if (!(typeHint != null && className.startsWith("java.util."))) {
-					ObjectNode copy = valueNode.deepCopy();
-					copy.remove("@class");
-					copy.remove("@typeHint");
-					try {
-						Class<?> clazz = Class.forName(className);
-						// Use unified deserialization strategy
-						yield deserializeWithStrategy(copy, clazz, objectMapper, typeMapper);
-					}
-					catch (ClassNotFoundException ex) {
-						throw new IllegalStateException(
-								"Cannot instantiate class " + className + " for @class deserialization", ex);
+						ObjectNode copy = valueNode.deepCopy();
+						copy.remove("@class");
+						copy.remove("@typeHint");
+						try {
+							Class<?> clazz = Class.forName(className);
+							// Use unified deserialization strategy
+							yield deserializeWithStrategy(copy, clazz, objectMapper, typeMapper);
+						}
+						catch (ClassNotFoundException ex) {
+							// Literal business payloads can use @class as an ordinary key.
+						}
 					}
 				}
-				}
-				if (typeHint != null) {
+				if (!invalidMapEnvelopeMarker && typeHint != null) {
 					ObjectNode copy = valueNode.deepCopy();
 					copy.remove("@typeHint");
 					copy.remove(TYPE_PROPERTY);
@@ -324,8 +337,7 @@ public interface JacksonDeserializer<T> {
 						yield deserializeWithStrategy(copy, clazz, objectMapper, typeMapper);
 					}
 					catch (ClassNotFoundException ex) {
-						throw new IllegalStateException(
-								"Cannot instantiate class " + typeHint + " for @typeHint deserialization", ex);
+						// Literal business payloads can use @typeHint as an ordinary key.
 					}
 				}
 				Map<String, Object> result = new LinkedHashMap<>();
@@ -333,9 +345,6 @@ public interface JacksonDeserializer<T> {
 				while (fields.hasNext()) {
 					var entry = fields.next();
 					String key = entry.getKey();
-					if ("@class".equals(key) || "@type".equals(key) || "@typeHint".equals(key)) {
-						continue;
-					}
 					result.put(key, valueFromNode(entry.getValue(), objectMapper, typeMapper));
 				}
 				yield result;
@@ -370,6 +379,109 @@ public interface JacksonDeserializer<T> {
 			case BINARY -> valueNode.binaryValue();
 		};
 
+	}
+
+	static Map<Object, Object> mapFromEnvelope(JsonNode valueNode, ObjectMapper objectMapper, TypeMapper typeMapper)
+			throws IOException {
+		Map<Object, Object> result = instantiateMap(valueNode.path(MAP_CLASS_PROPERTY).asText(null));
+		JsonNode entries = unwrapTypedArray(valueNode.get(MAP_ENTRIES_PROPERTY));
+		if (entries == null || !entries.isArray()) {
+			return result;
+		}
+		for (JsonNode entry : entries) {
+			entry = unwrapTypedArray(entry);
+			Object key;
+			Object value;
+			if (entry.isArray() && entry.size() == 2) {
+				key = valueFromNode(entry.get(0), objectMapper, typeMapper);
+				value = valueFromNode(entry.get(1), objectMapper, typeMapper);
+			}
+			else {
+				continue;
+			}
+			result.put(key, value);
+		}
+		return result;
+	}
+
+	static boolean isMapEnvelope(JsonNode node) {
+		if (node == null || !node.isObject() || !node.has(TYPE_PROPERTY)
+				|| !MAP_ENVELOPE_TYPE.equals(node.get(TYPE_PROPERTY).asText())) {
+			return false;
+		}
+		if (!node.has(MAP_CLASS_PROPERTY) || !node.get(MAP_CLASS_PROPERTY).isTextual()
+				|| !isMapClass(node.get(MAP_CLASS_PROPERTY).asText())) {
+			return false;
+		}
+		if (hasUnexpectedMapEnvelopeFields(node)) {
+			return false;
+		}
+		JsonNode entries = unwrapTypedArray(node.get(MAP_ENTRIES_PROPERTY));
+		if (entries == null || !entries.isArray()) {
+			return false;
+		}
+		for (JsonNode entry : entries) {
+			JsonNode unwrapped = unwrapTypedArray(entry);
+			if (!unwrapped.isArray() || unwrapped.size() != 2) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static boolean hasMapEnvelopeMarker(JsonNode node) {
+		return node != null && node.isObject() && node.has(TYPE_PROPERTY)
+				&& MAP_ENVELOPE_TYPE.equals(node.get(TYPE_PROPERTY).asText());
+	}
+
+	private static boolean hasUnexpectedMapEnvelopeFields(JsonNode node) {
+		var fields = node.fieldNames();
+		while (fields.hasNext()) {
+			String field = fields.next();
+			if (TYPE_PROPERTY.equals(field) || MAP_CLASS_PROPERTY.equals(field) || MAP_ENTRIES_PROPERTY.equals(field)) {
+				continue;
+			}
+			if ("@class".equals(field) && isMapClass(node.get(field).asText())) {
+				continue;
+			}
+			return true;
+		}
+		return false;
+	}
+
+	private static boolean isMapClass(String className) {
+		try {
+			return Map.class.isAssignableFrom(Class.forName(className));
+		}
+		catch (ClassNotFoundException | LinkageError ex) {
+			return false;
+		}
+	}
+
+	private static JsonNode unwrapTypedArray(JsonNode node) {
+		if (node != null && node.isArray() && node.size() == 2 && node.get(0).isTextual()
+				&& node.get(0).asText().startsWith("[")) {
+			return node.get(1);
+		}
+		return node;
+	}
+
+	private static Map<Object, Object> instantiateMap(String className) {
+		if (className != null) {
+			try {
+				Class<?> mapClass = Class.forName(className);
+				if (Map.class.isAssignableFrom(mapClass) && !mapClass.isInterface()
+						&& !Modifier.isAbstract(mapClass.getModifiers())) {
+					@SuppressWarnings("unchecked")
+					Map<Object, Object> result = (Map<Object, Object>) mapClass.getDeclaredConstructor().newInstance();
+					return result;
+				}
+			}
+			catch (ReflectiveOperationException | LinkageError ex) {
+				// Fall back to an insertion-ordered map for non-instantiable custom maps.
+			}
+		}
+		return new LinkedHashMap<>();
 	}
 
 	private static Object deserializeArrayNode(JsonNode valueNode, ObjectMapper objectMapper, TypeMapper typeMapper)
@@ -516,15 +628,17 @@ public interface JacksonDeserializer<T> {
 		Map<String, Object> metadata = new java.util.LinkedHashMap<>();
 		if (valueNode.has("metadata")) {
 			JsonNode metadataNode = valueNode.get("metadata");
-			if (metadataNode.isObject()) {
-				var fields = metadataNode.fields();
-				while (fields.hasNext()) {
-					var entry = fields.next();
-					String key = entry.getKey();
-					if ("@class".equals(key) || "@type".equals(key) || "@typeHint".equals(key)) {
+			boolean legacyRawMetadata = !isMapEnvelope(metadataNode);
+			Object restoredMetadata = valueFromNode(metadataNode, objectMapper, typeMapper);
+			if (restoredMetadata instanceof Map<?, ?> metadataMap) {
+				for (Map.Entry<?, ?> entry : metadataMap.entrySet()) {
+					if (!(entry.getKey() instanceof String key)) {
 						continue;
 					}
-					metadata.put(key, valueFromNode(entry.getValue(), objectMapper, typeMapper));
+					if (legacyRawMetadata && isTypeMarkerKey(key)) {
+						continue;
+					}
+					metadata.put(key, entry.getValue());
 				}
 			}
 		}
@@ -618,6 +732,10 @@ public interface JacksonDeserializer<T> {
 			// Ignore and fall through to default
 		}
 		return new RuntimeException(message + " (original: " + exceptionClass + ")");
+	}
+
+	private static boolean isTypeMarkerKey(String key) {
+		return "@class".equals(key) || "@type".equals(key) || "@typeHint".equals(key);
 	}
 
 	/**

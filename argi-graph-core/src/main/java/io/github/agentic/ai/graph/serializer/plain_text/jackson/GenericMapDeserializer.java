@@ -18,6 +18,7 @@ package io.github.agentic.ai.graph.serializer.plain_text.jackson;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonParser;
@@ -47,18 +48,19 @@ class GenericMapDeserializer extends StdDeserializer<Map<String, Object>> {
 		}
 
 		final ObjectNode node = (ObjectNode) jsonNode;
-		final Map<String, Object> result = new HashMap<>();
+		if (JacksonDeserializer.isMapEnvelope(node)) {
+			@SuppressWarnings({ "unchecked", "rawtypes" })
+			Map<String, Object> restored = (Map) JacksonDeserializer.mapFromEnvelope(node, mapper, typeMapper);
+			return restored;
+		}
+
+		final Map<String, Object> result = new LinkedHashMap<>();
 
 		final Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
 
 		while (fields.hasNext()) {
 			final var entry = fields.next();
 			String key = entry.getKey();
-
-
-			if ("@class".equals(key) || "@type".equals(key) || "@typeHint".equals(key)) {
-				continue;
-			}
 
 			result.put(key, JacksonDeserializer.valueFromNode(entry.getValue(), mapper, typeMapper));
 		}
