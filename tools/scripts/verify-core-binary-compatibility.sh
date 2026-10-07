@@ -17,14 +17,9 @@
 
 set -euo pipefail
 
-readonly BASE_COMMIT="${1:-c128f02584fc976ee641572074db2e556466f6a2}"
+readonly BASE_COMMIT="${1:-e3de87198da2509168a975c461885cc6c4c1e7c7}"
 readonly JAPICMP_VERSION="${JAPICMP_VERSION:-0.23.1}"
 readonly REVISION="${REVISION:-2.1.0-dev}"
-readonly REMOVED_BUILTIN_TYPES='io.github.agentic.ai.graph.node.KnowledgeRetrievalNode;'
-readonly REMOVED_BUILTIN_NESTED_TYPES='io.github.agentic.ai.graph.node.KnowledgeRetrievalNode$*;'
-readonly REMOVED_BUILTIN_NETWORK_TYPES='io.github.agentic.ai.graph.node.HttpNode;io.github.agentic.ai.graph.node.HttpNode$*;io.github.agentic.ai.graph.node.DocumentExtractorNode;io.github.agentic.ai.graph.node.DocumentExtractorNode$*;'
-readonly REMOVED_BUILTIN_EXECUTOR_TYPES='io.github.agentic.ai.graph.node.code.DockerCodeExecutor;io.github.agentic.ai.graph.node.code.DockerCodeExecutor$*'
-readonly REMOVED_BUILTIN_EXCLUDES="${REMOVED_BUILTIN_TYPES}${REMOVED_BUILTIN_NESTED_TYPES}${REMOVED_BUILTIN_NETWORK_TYPES}${REMOVED_BUILTIN_EXECUTOR_TYPES}"
 readonly CORE_RUNTIME_MODULES=':argi-graph-core,:argi-agent-framework,:argi-studio,:argi-starter-graph-observation,:argi-starter-builtin-nodes'
 
 readonly REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -80,6 +75,8 @@ echo "Building baseline public runtime artifacts in isolated Maven repo"
 run_maven_with_retry "${BASELINE_WORKTREE}" -U -Dmaven.test.skip=true -pl "${CORE_RUNTIME_MODULES}" -am package
 
 echo "Building candidate public runtime artifacts in isolated Maven repo"
+# Clean only runtime modules: cleaning the root would delete the isolated repo.
+run_maven_with_retry "${REPO_ROOT}" -pl "${CORE_RUNTIME_MODULES}" clean
 run_maven_with_retry "${REPO_ROOT}" -U -Dmaven.test.skip=true -pl "${CORE_RUNTIME_MODULES}" -am package
 
 echo "Resolving japicmp ${JAPICMP_VERSION}"
@@ -94,7 +91,6 @@ compare_module() {
 	local label="$1"
 	local baseline_jar="$2"
 	local candidate_jar="$3"
-	local excludes="${4:-}"
 	local report_file="${REPORT_DIR}/${label}-japicmp.md"
 	local -a japicmp_args=(
 		--old "${baseline_jar}"
@@ -104,9 +100,6 @@ compare_module() {
 		--error-on-binary-incompatibility
 		--ignore-missing-classes
 	)
-	if [[ -n "${excludes}" ]]; then
-		japicmp_args+=(--exclude "${excludes}")
-	fi
 	japicmp_args+=(--markdown)
 
 	echo "Comparing ${label}"
@@ -133,7 +126,6 @@ compare_module "argi-starter-graph-observation" \
 
 compare_module "argi-starter-builtin-nodes" \
 	"${BASELINE_WORKTREE}/spring-boot-starters/argi-starter-builtin-nodes/target/argi-starter-builtin-nodes-${REVISION}.jar" \
-	"${REPO_ROOT}/spring-boot-starters/argi-starter-builtin-nodes/target/argi-starter-builtin-nodes-${REVISION}.jar" \
-	"${REMOVED_BUILTIN_EXCLUDES}"
+	"${REPO_ROOT}/spring-boot-starters/argi-starter-builtin-nodes/target/argi-starter-builtin-nodes-${REVISION}.jar"
 
 echo "Core binary compatibility gate passed"
