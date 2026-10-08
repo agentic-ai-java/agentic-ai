@@ -52,6 +52,9 @@ tools: ## Install ci tools
 	fi
 
 	@echo "Installing yamllint"
+	# Install the validator dependency in the interpreter used by the gate.
+	# A preinstalled yamllint executable may belong to another Python environment.
+	python3 -m pip install PyYAML==6.0.2
 	@if command -v yamllint >/dev/null 2>&1; then \
 		echo "yamllint is already installed, skipping..."; \
 	else \
