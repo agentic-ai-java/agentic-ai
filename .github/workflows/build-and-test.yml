@@ -70,8 +70,11 @@ jobs:
       - run: pnpm --dir argi-studio/agent-chat-ui exec tsc --noEmit
       - run: pnpm --dir argi-studio/agent-chat-ui run test
       - run: pnpm --dir argi-studio/agent-chat-ui run build:static
+      - run: python3 tools/tests/release-tools-test.py
       - run: make tools
-      - run: make build
+      - name: Build release artifacts without signing or publishing
+        run: ./mvnw -B -Prelease -Dgpg.skip=true -DskipTests=true package
+      - run: python3 tools/scripts/verify-release-artifacts.py
       - name: Verify packaged Studio UI
         shell: bash
         run: |
@@ -80,3 +83,14 @@ jobs:
             ! -name '*-sources.jar' ! -name '*-javadoc.jar' -print -quit)"
           test -n "$studio_jar"
           jar tf "$studio_jar" | grep -q 'META-INF/resources/chatui/index.html'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate
+          if-no-files-found: error
+          path: |
+            .flattened-pom.xml
+            argi-*/.flattened-pom.xml
+            spring-boot-starters/*/.flattened-pom.xml
+            argi-*/target/*.jar
+            spring-boot-starters/*/target/*.jar
+          include-hidden-files: true

@@ -133,7 +133,7 @@ def validate_binary_script(repo_root: Path, failures: list[str], policy_contract
 
 def validate_source_fixture(repo_root: Path, failures: list[str]) -> None:
     text = read_text(repo_root, "tools/compatibility/legacy-api-consumer/pom.xml", failures)
-    if "<groupId>io.github.agentic-ai</groupId>" not in text:
+    if "<groupId>io.github.agentic-ai-java</groupId>" not in text:
         failures.append("source compatibility fixture must use current ARGI Maven coordinates")
 
 

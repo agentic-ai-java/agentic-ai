@@ -31,9 +31,9 @@ Just add the following dependency to your agent project:
 
 ```xml
 <dependency>
-	<groupId>io.github.agentic-ai</groupId>
+	<groupId>io.github.agentic-ai-java</groupId>
 	<artifactId>argi-studio</artifactId>
-	<version>2.1.0-dev</version>
+	<version>2.1.0-RC1</version>
 </dependency>
 ```
 

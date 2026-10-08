@@ -13,7 +13,7 @@
   </p>
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-4EB1BA.svg" alt="License"></a>
-    <a href="https://github.com/agentic-ai-java/argi"><img src="https://img.shields.io/badge/version-2.1.0--dev-blue" alt="Version"></a>
+    <a href="https://github.com/agentic-ai-java/argi"><img src="https://img.shields.io/badge/version-2.1.0--RC1-blue" alt="Version"></a>
     <img src="https://img.shields.io/badge/Java-17%2B-f59e0b" alt="Java 17+">
   </p>
 </div>

@@ -19,7 +19,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.github.agentic-ai</groupId>
+    <groupId>io.github.agentic-ai-java</groupId>
     <artifactId>argi-bom</artifactId>
     <version>${revision}</version>
 
@@ -66,7 +66,7 @@
     </developers>
 
     <properties>
-        <revision>2.1.0-dev</revision>
+        <revision>2.1.0-RC1</revision>
 
         <!-- Plugin Versions -->
         <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
@@ -92,31 +92,31 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>io.github.agentic-ai</groupId>
+                <groupId>io.github.agentic-ai-java</groupId>
                 <artifactId>argi-starter-graph-observation</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.github.agentic-ai</groupId>
+                <groupId>io.github.agentic-ai-java</groupId>
                 <artifactId>argi-starter-builtin-nodes</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>io.github.agentic-ai</groupId>
+                <groupId>io.github.agentic-ai-java</groupId>
                 <artifactId>argi-agent-framework</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>io.github.agentic-ai</groupId>
+                <groupId>io.github.agentic-ai-java</groupId>
                 <artifactId>argi-graph-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <!-- ARGI Studio -->
             <dependency>
-                <groupId>io.github.agentic-ai</groupId>
+                <groupId>io.github.agentic-ai-java</groupId>
                 <artifactId>argi-studio</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -457,6 +457,10 @@
                         <executions>
                             <execution>
                                 <id>flatten</id>
+                                <configuration combine.self="override">
+                                    <updatePomFile>true</updatePomFile>
+                                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                                </configuration>
                                 <phase>process-resources</phase>
                                 <goals>
                                     <goal>flatten</goal>

@@ -1,0 +1,107 @@
+# Copyright 2024-2026 the original author or authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish
+        required: true
+        type: string
+        default: v2.1.0-RC1
+concurrency:
+  group: argi-release
+  cancel-in-progress: false
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+      CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+      CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+      MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      - name: Verify release tag, version, and successful CI
+        shell: bash
+        run: |
+          test "$(git describe --tags --exact-match HEAD)" = "$RELEASE_TAG"
+          python3 - <<'PY'
+          import os
+          import subprocess
+          import json
+          import xml.etree.ElementTree as ET
+          ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
+          tag = os.environ['RELEASE_TAG']
+          for path in ('pom.xml', 'argi-bom/pom.xml'):
+              root = ET.parse(path).getroot()
+              assert root.findtext('m:groupId', namespaces=ns) == 'io.github.agentic-ai-java', path
+              assert 'v' + root.findtext('m:properties/m:revision', namespaces=ns) == tag, path
+          sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          runs = json.loads(subprocess.check_output([
+              'gh', 'run', 'list', '--repo', os.environ['GITHUB_REPOSITORY'],
+              '--commit', sha, '--branch', 'main', '--event', 'push',
+              '--limit', '30', '--json', 'workflowName,status,conclusion'
+          ], text=True))
+          for name in ('🛠️ Build and Test', '👀 Linter', '🗒️ License Check', '🗝️ Secrets Check'):
+              latest = next((run for run in runs if run['workflowName'] == name), None)
+              assert latest and latest['status'] == 'completed' and latest['conclusion'] == 'success', name
+          PY
+          test "$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')" = true
+      - name: Check publishing credentials
+        shell: bash
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          test -n "$CENTRAL_USERNAME"
+          test -n "$CENTRAL_PASSWORD"
+          test -n "$GPG_PRIVATE_KEY"
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build Studio UI
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.5.1 --activate
+          pnpm --dir argi-studio/agent-chat-ui install --frozen-lockfile
+          pnpm --dir argi-studio/agent-chat-ui audit --prod
+          pnpm --dir argi-studio/agent-chat-ui run build:static
+      - name: Build and sign the release
+        run: ./mvnw -B -Prelease -DskipTests=true verify
+      - run: python3 tools/scripts/verify-release-artifacts.py
+      - name: Publish to Maven Central
+        run: ./mvnw -B -Prelease -DskipTests=true deploy
+      - name: Publish GitHub prerelease after Central succeeds
+        shell: bash
+        run: |
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease

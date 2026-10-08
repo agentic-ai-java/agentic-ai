@@ -6,7 +6,7 @@ This file provides guidance for AI assistants working with the ARGI codebase.
 
 ARGI (Agent Runtime and Graph Intelligence, pronounced "AR-jee") is a production-ready framework for building agents, workflows, and multi-agent applications. It is forked from Spring AI Alibaba and focuses on stateful agent runtime capabilities: graph orchestration, persistence, context engineering, and human-in-the-loop support. It also supports the multi-model integration capabilities provided by Spring AI.
 
-> **Naming:** the product display name is *ARGI*. Published Maven coordinates use `io.github.agentic-ai:argi-*`, Java packages use `io.github.agentic.ai`, configuration prefixes use `argi.*`, and framework-specific public class names use the `Argi*` prefix.
+> **Naming:** the product display name is *ARGI*. Published Maven coordinates use `io.github.agentic-ai-java:argi-*`, Java packages use `io.github.agentic.ai`, configuration prefixes use `argi.*`, and framework-specific public class names use the `Argi*` prefix.
 
 **Key Features:**
 
