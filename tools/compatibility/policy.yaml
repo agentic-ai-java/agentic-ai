@@ -1,0 +1,25 @@
+# Copyright 2024-2026 the original author or authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+core_binary_baseline: e3de87198da2509168a975c461885cc6c4c1e7c7
+extensions_repository: agentic-ai-java/argi-extensions
+extensions_refs:
+  - ec023a24910a0a30c0e3e1c810e4c3ac2ef0dc40
+  - ed07835729405e7c8b97772d5b478d63ac1f9760
+extensions_checkout_path: .ci/argi-extensions
+extensions_maven_repo_override: EXTENSIONS_COMPAT_MAVEN_REPO
+compatibility_gate_order:
+  - compatibility-wiring-check
+  - binary-compatibility-check
+  - source-compatibility-check

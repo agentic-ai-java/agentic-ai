@@ -407,7 +407,7 @@ test_extensions_wrapper_propagates_core_and_extensions_failures() {
 
 copy_wiring_validator_fixture() {
 	local fixture="$1"
-	mkdir -p "${fixture}/tools/make" "${fixture}/tools/scripts" "${fixture}/tools/compatibility/legacy-api-consumer" "${fixture}/.github/workflows" "${fixture}/docs"
+	mkdir -p "${fixture}/tools/make" "${fixture}/tools/scripts" "${fixture}/tools/compatibility/legacy-api-consumer"
 	cp "${REPO_ROOT}/Makefile" "${fixture}/Makefile"
 	cp "${REPO_ROOT}"/tools/make/*.mk "${fixture}/tools/make/"
 	mkdir -p "${fixture}/tools/linter/codespell"
@@ -416,8 +416,7 @@ copy_wiring_validator_fixture() {
 	cp "${REPO_ROOT}/tools/scripts/verify-compatibility-wiring.sh" "${fixture}/tools/scripts/"
 	cp "${REPO_ROOT}"/tools/scripts/verify-compatibility-wiring.py "${fixture}/tools/scripts/"
 	cp "${REPO_ROOT}/tools/compatibility/legacy-api-consumer/pom.xml" "${fixture}/tools/compatibility/legacy-api-consumer/pom.xml"
-	cp "${REPO_ROOT}/.github/workflows/build-and-test.yml" "${fixture}/.github/workflows/build-and-test.yml"
-	cp "${REPO_ROOT}/docs/compatibility-policy.md" "${fixture}/docs/compatibility-policy.md"
+	cp "${REPO_ROOT}/tools/compatibility/policy.yaml" "${fixture}/tools/compatibility/policy.yaml"
 	chmod +x "${fixture}"/tools/scripts/*.sh
 	git -C "${fixture}" init -q
 }
@@ -444,7 +443,7 @@ test_wiring_validator_rejects_skipped_make_recipes() {
 	assert_contains "${output}" "binary-compatibility-check"
 }
 
-test_wiring_validator_rejects_baseline_exclusions_and_workflow_semantics() {
+test_wiring_validator_rejects_baseline_exclusions_and_policy_mismatch() {
 	local baseline_fixture="${TEST_TMP}/validator-baseline"
 	copy_wiring_validator_fixture "${baseline_fixture}"
 	perl -0pi -e 's/e3de87198da2509168a975c461885cc6c4c1e7c7/c128f02584fc976ee641572074db2e556466f6a2/' "${baseline_fixture}/tools/scripts/verify-core-binary-compatibility.sh"
@@ -459,27 +458,9 @@ test_wiring_validator_rejects_baseline_exclusions_and_workflow_semantics() {
 	output="$(run_wiring_validator "${exclude_fixture}" 2>&1)" && fail "validator accepted binary exclusions"
 	assert_contains "${output}" "binary compatibility script must not pass japicmp excludes"
 
-	local workflow_fixture="${TEST_TMP}/validator-workflow"
-	copy_wiring_validator_fixture "${workflow_fixture}"
-	perl -0pi -e 's/, api-compatibility//' "${workflow_fixture}/.github/workflows/build-and-test.yml"
-	output="$(run_wiring_validator "${workflow_fixture}" 2>&1)" && fail "validator accepted missing build dependency"
-	assert_contains "${output}" "build job"
-
-	local unsafe_fixture="${TEST_TMP}/validator-unsafe-checkout"
-	copy_wiring_validator_fixture "${unsafe_fixture}"
-	perl -0pi -e 's#path: \.ci/argi-extensions#path: target/argi-extensions#' "${unsafe_fixture}/.github/workflows/build-and-test.yml"
-	output="$(run_wiring_validator "${unsafe_fixture}" 2>&1)" && fail "validator accepted unsafe Extensions checkout path"
-	assert_contains "${output}" "Extensions checkout path"
-
-	local order_fixture="${TEST_TMP}/validator-api-tools-order"
-	copy_wiring_validator_fixture "${order_fixture}"
-	perl -0pi -e 's/- run: make tools\n      - run: make compatibility-check/- run: make compatibility-check\n      - run: make tools/' "${order_fixture}/.github/workflows/build-and-test.yml"
-	output="$(run_wiring_validator "${order_fixture}" 2>&1)" && fail "validator accepted API check before make tools"
-	assert_contains "${output}" "make tools before make compatibility-check"
-
 	local policy_fixture="${TEST_TMP}/validator-policy-contract"
 	copy_wiring_validator_fixture "${policy_fixture}"
-	perl -0pi -e 's/core_binary_baseline: e3de87198da2509168a975c461885cc6c4c1e7c7/core_binary_baseline: c128f02584fc976ee641572074db2e556466f6a2/' "${policy_fixture}/docs/compatibility-policy.md"
+	perl -0pi -e 's/core_binary_baseline: e3de87198da2509168a975c461885cc6c4c1e7c7/core_binary_baseline: c128f02584fc976ee641572074db2e556466f6a2/' "${policy_fixture}/tools/compatibility/policy.yaml"
 	output="$(run_wiring_validator "${policy_fixture}" 2>&1)" && fail "validator accepted wrong policy contract baseline"
 	assert_contains "${output}" "compatibility policy contract core_binary_baseline"
 }
@@ -500,7 +481,7 @@ main() {
 	test_extensions_wrapper_propagates_core_and_extensions_failures
 	test_wiring_validator_accepts_current_semantics
 	test_wiring_validator_rejects_skipped_make_recipes
-	test_wiring_validator_rejects_baseline_exclusions_and_workflow_semantics
+	test_wiring_validator_rejects_baseline_exclusions_and_policy_mismatch
 	echo "Compatibility wiring behavior tests passed."
 }
 

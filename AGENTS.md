@@ -28,8 +28,7 @@ argi/
 ├── spring-boot-starters/              # Spring Boot Starters
 │   ├── argi-starter-builtin-nodes/     # Built-in workflow nodes
 │   └── argi-starter-graph-observation/ # Observability
-├── tools/                             # Build and linting tools
-└── docs/                              # Documentation
+└── tools/                             # Build and linting tools
 ```
 
 This repository holds the core only. Optional integrations live in separate repositories:
