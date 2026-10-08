@@ -101,9 +101,9 @@ jobs:
           pnpm --dir argi-studio/agent-chat-ui install --frozen-lockfile
           pnpm --dir argi-studio/agent-chat-ui audit --prod
           pnpm --dir argi-studio/agent-chat-ui run build:static
-      - name: Build and sign the release
-        run: ./mvnw -B -Prelease -DskipTests=true verify
-      - run: python3 tools/scripts/verify-release-artifacts.py --signed
+      - name: Build and sign the release bundle without uploading
+        run: ./mvnw -B -Prelease -DskipTests=true -DskipPublishing=true deploy
+      - run: python3 tools/scripts/verify-release-artifacts.py --signed --bundle argi-bom/target/central-publishing/central-bundle.zip
       - name: Publish to Maven Central
         if: ${{ inputs.publish }}
         run: ./mvnw -B -Prelease -DskipTests=true deploy
@@ -113,6 +113,7 @@ jobs:
         run: |
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease
       - name: Archive signed release artifacts
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: signed-${{ inputs.tag }}

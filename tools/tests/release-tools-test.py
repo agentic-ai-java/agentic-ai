@@ -13,14 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
+import importlib.util
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from zipfile import ZipFile
 
 
 MIGRATOR = Path(__file__).resolve().parents[1] / "scripts/migrate-maven-coordinates.py"
+VERIFIER_PATH = Path(__file__).resolve().parents[1] / "scripts/verify-release-artifacts.py"
+SPEC = importlib.util.spec_from_file_location("release_verifier", VERIFIER_PATH)
+VERIFIER = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(VERIFIER)
 POM = """<project xmlns="http://maven.apache.org/POM/4.0.0">
   <!-- Preserve formatting and application coordinates. -->
   <groupId>com.example</groupId><artifactId>app</artifactId>
@@ -35,6 +42,45 @@ POM = """<project xmlns="http://maven.apache.org/POM/4.0.0">
   </dependencies>
 </project>
 """
+
+
+class CentralBundleTest(unittest.TestCase):
+    def write_bundle(self, directory, extra=None, omit_pom=False, corrupt=False):
+        source = Path(directory) / "payload.pom"
+        source.write_bytes(b"<project/>")
+        name = "io/github/agentic-ai-java/argi/2.1.0-RC1/argi-2.1.0-RC1.pom"
+        bundle = Path(directory) / "central-bundle.zip"
+        with ZipFile(bundle, "w") as archive:
+            payload = b"corrupt" if corrupt else source.read_bytes()
+            if not omit_pom:
+                archive.writestr(name, payload)
+            for algorithm in ("md5", "sha1"):
+                archive.writestr(name + "." + algorithm, hashlib.new(algorithm, payload).hexdigest())
+            if extra:
+                archive.writestr(extra, b"<metadata/>")
+        return bundle, {name: source}
+
+    def test_valid_bundle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            VERIFIER.verify_bundle(*self.write_bundle(directory))
+
+    def test_repository_metadata_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle, payloads = self.write_bundle(
+                directory, extra="io/github/agentic-ai-java/argi/maven-metadata.xml"
+            )
+            with self.assertRaisesRegex(ValueError, "unexpected files"):
+                VERIFIER.verify_bundle(bundle, payloads)
+
+    def test_missing_pom_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "Missing or mismatched"):
+                VERIFIER.verify_bundle(*self.write_bundle(directory, omit_pom=True))
+
+    def test_changed_payload_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "Missing or mismatched"):
+                VERIFIER.verify_bundle(*self.write_bundle(directory, corrupt=True))
 
 
 class MigrationTest(unittest.TestCase):

@@ -29,13 +29,15 @@
 
 1. 确认候选 CI 通过，标签指向该提交，GitHub 预发布草稿已备好。
 2. 配置凭据并确认 namespace 授权。
-3. 手动运行 `.github/workflows/release.yml`，输入 `v2.1.0-RC1`，保持默认 `publish=false`，仅验证构建与签名并归档签名制品。
+3. 手动运行 `.github/workflows/release.yml`，输入 `v2.1.0-RC1`，保持默认 `publish=false`，使用 `deploy -DskipPublishing=true` 生成签名发布包，校验 ZIP 的制品路径、内容和校验和，不上传 Central，并归档签名制品。失败时也尝试归档发布包。
 4. 签名验证通过并获得发布确认后，以同一标签再次运行 workflow，设置 `publish=true`。
 5. workflow 复核标签、版本和该提交的 CI 结果，以 JDK 17 重建 UI，生成并签名 Maven 制品，校验制品后执行 `deploy`。
 6. Central 插件等待发布成功，再将对应 GitHub Release 草稿公开为预发布。
 7. 从 Maven Central 检查七个模块的 POM、jar、源码、Javadoc 和签名，并以消费项目验证新坐标可解析。
 
 根 POM 与独立 BOM 的 `release` profile 当前均配置 `autoPublish=true`、`waitUntil=published`；使用 `publish=true` 运行 workflow 或手动执行 `deploy` 将实际公开 Maven 制品。默认 `publish=false` 不执行上传或公开发布。
+
+发布使用 wrapper 固定的 Maven 3.9.16。RC1 首次上传使用 Maven 3.10.0，Central 返回七个模块目录存在无配套 POM 的内容；Central 插件 0.11.0 只清理特定文件名的 staging metadata。固定兼容版本，并在上传前检查实际 ZIP，禁止多余的仓库 metadata。该修复无迁移，直接替换构建配置；发布前可恢复旧 wrapper，公开后的 Maven 版本不能覆盖或撤回。
 
 ## 迁移与回滚
 
