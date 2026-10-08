@@ -6,7 +6,7 @@
 
 本任务按用户授权通过 GitHub CI 构建和验证，不执行本地构建或测试。Build and Test 使用 `release` profile 生成未签名候选制品，校验 flatten 后的坐标、版本、BOM 管理项、源码与 Javadoc jar、Java 17 字节码及 Studio 页面入包，并保存为 `release-candidate` artifact。
 
-只有同一提交的 Build and Test、Linter、License Check、Secrets Check 均通过后，才给该提交添加不可随意移动的发布标签并准备 GitHub Release 草稿。发布说明使用 [RELEASE_NOTES.md](RELEASE_NOTES.md)。普通 push 不触发发布。
+发布说明使用 [RELEASE_NOTES.md](RELEASE_NOTES.md)。普通 push 不触发发布。按用户最新授权，发布流程不再等待全量 CI；发布 workflow 自行执行快速发布工具回归、构建、签名和 ZIP 校验，标签和草稿必须指向同一提交。Java 17 全量测试最近通过于 `f8c51b35d4d5b6bc0c674835b212d3545eac2f27`，后续修复仅调整发布脚本与流程。
 
 ## 发布凭据
 
@@ -27,17 +27,17 @@
 
 割接窗口从经确认后手动启动 Release workflow 开始，到 Central 发布成功且 GitHub 预发布公开为止；发布期间不移动标签、不替换同版本制品。候选提交、CI 链接和签名发布记录归档在 GitHub Actions 与 Release 中。
 
-1. 确认候选 CI 通过，标签指向该提交，GitHub 预发布草稿已备好。
+1. 确认标签与 GitHub 预发布草稿指向同一候选提交。发布期间不重复运行全量 CI。
 2. 配置凭据并确认 namespace 授权。
-3. 手动运行 `.github/workflows/release.yml`，输入 `v2.1.0-RC1`，保持默认 `publish=false`，使用 `deploy -DskipPublishing=true` 生成签名发布包，校验 ZIP 的制品路径、内容和校验和，不上传 Central，并归档签名制品。失败时也尝试归档发布包。
+3. 手动运行 `.github/workflows/release.yml`，输入 `v2.1.0-RC1`，保持默认 `publish=false`，使用 Maven `verify` 生成签名制品，再由 `verify-release-artifacts.py --signed --create-bundle` 按 Maven 仓库布局生成 ZIP，校验制品路径、内容和校验和，不上传 Central，并归档签名制品。失败时也尝试归档发布包。
 4. 签名验证通过并获得发布确认后，以同一标签再次运行 workflow，设置 `publish=true`。
-5. workflow 复核标签、版本和该提交的 CI 结果，以 JDK 17 重建 UI，生成并签名 Maven 制品，校验制品后执行 `deploy`。
-6. Central 插件等待发布成功，再将对应 GitHub Release 草稿公开为预发布。
+5. workflow 复核标签、版本和草稿目标，运行快速发布工具回归，以 JDK 17 重建 UI，生成并签名 Maven 制品，校验 ZIP 后由 `publish-central-bundle.py` 使用 Central 官方 API 上传同一发布包，设置 `publishingType=AUTOMATIC`。
+6. 脚本归档 deployment ID 和状态到 `target/central-publishing/deployment.json`，等待 Central 返回 `PUBLISHED`，再将对应 GitHub Release 草稿公开为预发布。校验失败、网络异常或等待超时会终止流程；记录存在时仅继续查询状态，不重复上传。
 7. 从 Maven Central 检查七个模块的 POM、jar、源码、Javadoc 和签名，并以消费项目验证新坐标可解析。
 
-根 POM 与独立 BOM 的 `release` profile 当前均配置 `autoPublish=true`、`waitUntil=published`；使用 `publish=true` 运行 workflow 或手动执行 `deploy` 将实际公开 Maven 制品。默认 `publish=false` 不执行上传或公开发布。
+根 POM 与独立 BOM 的 `release` profile 保留 Central 插件配置；手动执行 `deploy` 将实际上传并公开 Maven 制品。GitHub 发布流程使用官方 ZIP API，默认 `publish=false` 不执行上传或公开发布。
 
-发布使用 wrapper 固定的 Maven 3.9.16。RC1 首次上传使用 Maven 3.10.0，Central 返回七个模块目录存在无配套 POM 的内容；Central 插件 0.11.0 只清理特定文件名的 staging metadata。固定兼容版本，并在上传前检查实际 ZIP，禁止多余的仓库 metadata。该修复无迁移，直接替换构建配置；发布前可恢复旧 wrapper，公开后的 Maven 版本不能覆盖或撤回。
+发布使用 wrapper 固定的 Maven 3.9.16。RC1 首次上传使用 Maven 3.10.0，Central 返回七个模块目录存在无配套 POM 的内容；Central 插件 0.11.0 只清理特定文件名的 staging metadata，且 `skipPublishing=true` 实际跳过制品收集，无法按文档描述生成 ZIP。发布流程改用 Python 标准库打包已验证制品和签名，明确限定文件清单，禁止多余的仓库 metadata；上传使用官方 API，凭据仅在进程内存中处理。普通 CI 校验未签名 ZIP，发布 CI 校验签名 ZIP。该修复无迁移，直接替换构建配置；公开后的 Maven 版本不能覆盖或撤回。
 
 ## 迁移与回滚
 
@@ -57,5 +57,6 @@ python3 tools/scripts/migrate-maven-coordinates.py --write /path/to/application/
 2026-10-08 查阅并采用以下官方文档：
 
 - [Sonatype Central Maven 插件](https://central.sonatype.org/publish/publish-portal-maven/)：签名制品、自动发布及等待 `published` 状态。
+- [Sonatype Central 发布 API](https://central.sonatype.org/publish/publish-portal-api/)：Maven 布局 ZIP、Bearer 用户令牌、multipart 上传、自动发布与 deployment 状态查询。
 - [Maven GPG 插件](https://maven.apache.org/plugins/maven-gpg-plugin/usage.html)：使用环境变量传递口令。
 - [actions/setup-java](https://github.com/actions/setup-java/tree/v4)：JDK 17、`central` server 凭据与 GPG key 导入。

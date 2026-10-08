@@ -74,7 +74,7 @@ jobs:
       - run: make tools
       - name: Build release artifacts without signing or publishing
         run: ./mvnw -B -Prelease -Dgpg.skip=true -DskipTests=true package
-      - run: python3 tools/scripts/verify-release-artifacts.py
+      - run: python3 tools/scripts/verify-release-artifacts.py --create-bundle target/central-publishing/central-bundle.zip
       - name: Verify packaged Studio UI
         shell: bash
         run: |

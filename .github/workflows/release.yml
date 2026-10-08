@@ -46,7 +46,7 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
-      - name: Verify release tag, version, and successful CI
+      - name: Verify release tag, version, and draft target
         shell: bash
         run: |
           test "$(git describe --tags --exact-match HEAD)" = "$RELEASE_TAG"
@@ -62,16 +62,14 @@ jobs:
               assert root.findtext('m:groupId', namespaces=ns) == 'io.github.agentic-ai-java', path
               assert 'v' + root.findtext('m:properties/m:revision', namespaces=ns) == tag, path
           sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
-          runs = json.loads(subprocess.check_output([
-              'gh', 'run', 'list', '--repo', os.environ['GITHUB_REPOSITORY'],
-              '--commit', sha, '--branch', 'main', '--event', 'push',
-              '--limit', '30', '--json', 'workflowName,status,conclusion'
+          release = json.loads(subprocess.check_output([
+              'gh', 'release', 'view', tag, '--repo', os.environ['GITHUB_REPOSITORY'],
+              '--json', 'isDraft,targetCommitish'
           ], text=True))
-          for name in ('🛠️ Build and Test', '👀 Linter', '🗒️ License Check', '🗝️ Secrets Check'):
-              latest = next((run for run in runs if run['workflowName'] == name), None)
-              assert latest and latest['status'] == 'completed' and latest['conclusion'] == 'success', name
+          assert release['isDraft'] and release['targetCommitish'] == sha, 'Release draft target mismatch'
           PY
-          test "$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')" = true
+      - name: Verify release tools
+        run: python3 tools/tests/release-tools-test.py
       - name: Check publishing credentials
         shell: bash
         env:
@@ -101,12 +99,12 @@ jobs:
           pnpm --dir argi-studio/agent-chat-ui install --frozen-lockfile
           pnpm --dir argi-studio/agent-chat-ui audit --prod
           pnpm --dir argi-studio/agent-chat-ui run build:static
-      - name: Build and sign the release bundle without uploading
-        run: ./mvnw -B -Prelease -DskipTests=true -DskipPublishing=true deploy
-      - run: python3 tools/scripts/verify-release-artifacts.py --signed --bundle argi-bom/target/central-publishing/central-bundle.zip
+      - name: Build and sign the release
+        run: ./mvnw -B -Prelease -DskipTests=true verify
+      - run: python3 tools/scripts/verify-release-artifacts.py --signed --create-bundle target/central-publishing/central-bundle.zip
       - name: Publish to Maven Central
         if: ${{ inputs.publish }}
-        run: ./mvnw -B -Prelease -DskipTests=true deploy
+        run: python3 tools/scripts/publish-central-bundle.py target/central-publishing/central-bundle.zip
       - name: Publish GitHub prerelease after Central succeeds
         if: ${{ inputs.publish }}
         shell: bash
@@ -129,4 +127,5 @@ jobs:
             argi-*/target/*.jar
             spring-boot-starters/*/target/*.jar
             target/central-publishing/*.zip
+            target/central-publishing/*.json
             argi-bom/target/central-publishing/*.zip

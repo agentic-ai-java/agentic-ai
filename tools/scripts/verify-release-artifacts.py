@@ -19,13 +19,24 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from zipfile import ZipFile
+from zipfile import ZipFile, ZIP_DEFLATED
 from zipfile import BadZipFile
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GROUP_ID = "io.github.agentic-ai-java"
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
+
+
+def create_bundle(bundle_path: Path, payloads: dict[str, Path]) -> None:
+    bundle_path.parent.mkdir(parents=True, exist_ok=True)
+    with ZipFile(bundle_path, "w", compression=ZIP_DEFLATED) as archive:
+        for name, source in payloads.items():
+            data = source.read_bytes()
+            archive.writestr(name, data)
+            if not name.endswith(".asc"):
+                for algorithm in ("md5", "sha1", "sha256", "sha512"):
+                    archive.writestr(name + "." + algorithm, hashlib.new(algorithm, data).hexdigest())
 
 
 def verify_bundle(bundle_path: Path, payloads: dict[str, Path]) -> None:
@@ -61,7 +72,7 @@ def verify_signature(signature: Path, payload: Path) -> None:
         raise ValueError(f"Invalid release signature: {signature}")
 
 
-def verify(require_signatures: bool = False, bundle_path: Path | None = None) -> None:
+def verify(require_signatures: bool = False, bundle_path: Path | None = None, generate_bundle: bool = False) -> None:
     root = ET.parse(REPO_ROOT / "pom.xml").getroot()
     version = root.findtext("m:properties/m:revision", namespaces=NS)
     if not version or "${" in version or version.endswith(("-dev", "-SNAPSHOT")):
@@ -131,6 +142,8 @@ def verify(require_signatures: bool = False, bundle_path: Path | None = None) ->
     if managed != runtime_artifacts:
         raise ValueError(f"BOM/runtime artifact mismatch: {managed ^ runtime_artifacts}")
     if bundle_path is not None:
+        if generate_bundle:
+            create_bundle(bundle_path, bundle_payloads)
         verify_bundle(bundle_path, bundle_payloads)
     print(f"Release artifacts verified: {GROUP_ID}, version {version}, {len(modules)} modules, Java 17")
 
@@ -138,10 +151,12 @@ def verify(require_signatures: bool = False, bundle_path: Path | None = None) ->
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Verify Maven release artifacts and optional GPG signatures")
     parser.add_argument("--signed", action="store_true", help="Require and verify all release artifact signatures")
-    parser.add_argument("--bundle", type=Path, help="Verify the exact Central ZIP payloads, paths, and checksums")
+    bundle_options = parser.add_mutually_exclusive_group()
+    bundle_options.add_argument("--bundle", type=Path, help="Verify the exact Central ZIP payloads, paths, and checksums")
+    bundle_options.add_argument("--create-bundle", type=Path, help="Create and verify a Central ZIP from validated artifacts")
     args = parser.parse_args()
     try:
-        verify(args.signed, args.bundle)
+        verify(args.signed, args.bundle or args.create_bundle, args.create_bundle is not None)
     except (OSError, ET.ParseError, ValueError, BadZipFile) as exc:
         print(f"Release artifact verification failed: {exc}", file=sys.stderr)
         sys.exit(1)

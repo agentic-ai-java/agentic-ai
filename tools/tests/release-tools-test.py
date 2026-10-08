@@ -15,10 +15,12 @@
 
 import hashlib
 import importlib.util
+import json
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -28,6 +30,10 @@ VERIFIER_PATH = Path(__file__).resolve().parents[1] / "scripts/verify-release-ar
 SPEC = importlib.util.spec_from_file_location("release_verifier", VERIFIER_PATH)
 VERIFIER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(VERIFIER)
+PUBLISHER_PATH = Path(__file__).resolve().parents[1] / "scripts/publish-central-bundle.py"
+PUBLISHER_SPEC = importlib.util.spec_from_file_location("central_publisher", PUBLISHER_PATH)
+PUBLISHER = importlib.util.module_from_spec(PUBLISHER_SPEC)
+PUBLISHER_SPEC.loader.exec_module(PUBLISHER)
 POM = """<project xmlns="http://maven.apache.org/POM/4.0.0">
   <!-- Preserve formatting and application coordinates. -->
   <groupId>com.example</groupId><artifactId>app</artifactId>
@@ -64,6 +70,29 @@ class CentralBundleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             VERIFIER.verify_bundle(*self.write_bundle(directory))
 
+    def test_generated_signed_bundle_round_trip(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle, payloads = self.write_bundle(directory)
+            signature = Path(directory) / "payload.pom.asc"
+            signature.write_bytes(b"signed payload")
+            payloads[next(iter(payloads)) + ".asc"] = signature
+            VERIFIER.create_bundle(bundle, payloads)
+            VERIFIER.verify_bundle(bundle, payloads)
+            with ZipFile(bundle) as archive:
+                self.assertEqual(6, len(archive.namelist()))
+
+    def test_corrupt_checksum_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle, payloads = self.write_bundle(directory)
+            with ZipFile(bundle) as archive:
+                contents = {name: archive.read(name) for name in archive.namelist()}
+            contents[next(iter(payloads)) + ".sha1"] = b"0" * 40
+            with ZipFile(bundle, "w") as archive:
+                for name, data in contents.items():
+                    archive.writestr(name, data)
+            with self.assertRaisesRegex(ValueError, "Invalid Central bundle checksum"):
+                VERIFIER.verify_bundle(bundle, payloads)
+
     def test_repository_metadata_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             bundle, payloads = self.write_bundle(
@@ -81,6 +110,30 @@ class CentralBundleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(ValueError, "Missing or mismatched"):
                 VERIFIER.verify_bundle(*self.write_bundle(directory, corrupt=True))
+
+
+class CentralPublicationTest(unittest.TestCase):
+    def test_waits_for_published_and_archives_public_status(self):
+        with tempfile.TemporaryDirectory() as directory:
+            record = Path(directory) / "deployment.json"
+            replies = [json.dumps({"deploymentId": "test-id", "deploymentState": state}).encode()
+                       for state in ("VALIDATING", "PUBLISHED")]
+            with patch.object(PUBLISHER, "request", side_effect=replies) as request_mock:
+                with patch.object(PUBLISHER.time, "sleep"):
+                    PUBLISHER.wait_until_published("test-id", "secret-token", record)
+            self.assertEqual(2, request_mock.call_count)
+            self.assertEqual("PUBLISHED", json.loads(record.read_text())["deploymentState"])
+            self.assertNotIn("secret-token", record.read_text())
+
+    def test_failed_deployment_stops_publication(self):
+        with tempfile.TemporaryDirectory() as directory:
+            record = Path(directory) / "deployment.json"
+            reply = json.dumps({"deploymentId": "test-id", "deploymentState": "FAILED",
+                                "errors": {"common": ["invalid bundle"]}}).encode()
+            with patch.object(PUBLISHER, "request", return_value=reply):
+                with self.assertRaisesRegex(RuntimeError, "Central validation failed"):
+                    PUBLISHER.wait_until_published("test-id", "secret-token", record)
+            self.assertEqual("FAILED", json.loads(record.read_text())["deploymentState"])
 
 
 class MigrationTest(unittest.TestCase):
