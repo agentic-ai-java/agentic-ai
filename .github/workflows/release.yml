@@ -20,6 +20,11 @@ on:
         required: true
         type: string
         default: v2.1.0-RC1
+      publish:
+        description: Publish to Maven Central and GitHub after signing validation
+        required: true
+        type: boolean
+        default: false
 concurrency:
   group: argi-release
   cancel-in-progress: false
@@ -100,8 +105,27 @@ jobs:
         run: ./mvnw -B -Prelease -DskipTests=true verify
       - run: python3 tools/scripts/verify-release-artifacts.py
       - name: Publish to Maven Central
+        if: ${{ inputs.publish }}
         run: ./mvnw -B -Prelease -DskipTests=true deploy
       - name: Publish GitHub prerelease after Central succeeds
+        if: ${{ inputs.publish }}
         shell: bash
         run: |
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease
+      - name: Archive signed release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-${{ inputs.tag }}
+          if-no-files-found: error
+          include-hidden-files: true
+          path: |
+            .flattened-pom.xml
+            argi-*/.flattened-pom.xml
+            spring-boot-starters/*/.flattened-pom.xml
+            target/*.asc
+            argi-*/target/*.asc
+            spring-boot-starters/*/target/*.asc
+            argi-*/target/*.jar
+            spring-boot-starters/*/target/*.jar
+            target/central-publishing/*.zip
+            argi-bom/target/central-publishing/*.zip
