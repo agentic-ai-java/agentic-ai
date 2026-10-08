@@ -19,7 +19,7 @@ set -euo pipefail
 
 readonly BASE_COMMIT="${1:-e3de87198da2509168a975c461885cc6c4c1e7c7}"
 readonly JAPICMP_VERSION="${JAPICMP_VERSION:-0.23.1}"
-readonly REVISION="${REVISION:-2.1.0-RC1}"
+readonly REVISION="${REVISION:-2.1.0-RC2-SNAPSHOT}"
 readonly BASELINE_REVISION="${BASELINE_REVISION:-2.1.0-dev}"
 readonly CORE_RUNTIME_MODULES=':argi-graph-core,:argi-agent-framework,:argi-studio,:argi-starter-graph-observation,:argi-starter-builtin-nodes'
 

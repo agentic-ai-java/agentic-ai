@@ -2,6 +2,8 @@
 
 发布范围为 `io.github.agentic-ai-java` 下的父 POM、BOM、Graph Core、Agent Framework、Studio 和两个 Starter，共七个 Maven 模块。GitHub 标签为 `v2.1.0-RC1`，Release 标记为预发布。
 
+RC1 发布后，主分支开发版本为 `2.1.0-RC2-SNAPSHOT`。普通 CI 可以校验未签名的 SNAPSHOT 候选制品；正式发布的签名校验仍拒绝 SNAPSHOT。此次版本更新通过 `[skip ci]` 提交，不运行构建或测试；RC1 标签及已公开制品保持原发布版本。
+
 ## 准备与验证
 
 本任务按用户授权通过 GitHub CI 构建和验证，不执行本地构建或测试。Build and Test 使用 `release` profile 生成未签名候选制品，校验 flatten 后的坐标、版本、BOM 管理项、源码与 Javadoc jar、Java 17 字节码及 Studio 页面入包，并保存为 `release-candidate` artifact。

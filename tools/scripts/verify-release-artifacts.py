@@ -75,7 +75,7 @@ def verify_signature(signature: Path, payload: Path) -> None:
 def verify(require_signatures: bool = False, bundle_path: Path | None = None, generate_bundle: bool = False) -> None:
     root = ET.parse(REPO_ROOT / "pom.xml").getroot()
     version = root.findtext("m:properties/m:revision", namespaces=NS)
-    if not version or "${" in version or version.endswith(("-dev", "-SNAPSHOT")):
+    if not version or "${" in version or version.endswith("-dev") or (require_signatures and version.endswith("-SNAPSHOT")):
         raise ValueError("Release version must be concrete and non-SNAPSHOT")
     modules = ["."] + [node.text for node in root.findall("m:modules/m:module", NS)]
     runtime_artifacts = set()
