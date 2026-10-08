@@ -64,6 +64,7 @@ mvn -f examples/chatbot/pom.xml spring-boot:run
 | [Spring Boot Starters](spring-boot-starters) | 内置图节点和图可观测性 |
 | [Extensions](https://github.com/agentic-ai-java/argi-extensions) | 模型与文档契约、A2A、Nacos、AgentScope、存储等可选扩展 |
 | [Examples](https://github.com/agentic-ai-java/argi-examples/tree/main/examples) | Chatbot、多智能体、图工程和文档示例 |
+| [Benchmark](benchmark) | [ARGI 基准测试项目](https://github.com/agentic-ai-java/argi-benchmark) |
 
 ## 文档
 

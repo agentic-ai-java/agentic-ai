@@ -64,6 +64,7 @@ Open [http://localhost:8080/chatui/index.html](http://localhost:8080/chatui/inde
 | [Spring Boot Starters](spring-boot-starters) | Built-in graph nodes and graph observability |
 | [Extensions](https://github.com/agentic-ai-java/argi-extensions) | Model and document contracts, A2A, Nacos, AgentScope, storage, and other optional integrations |
 | [Examples](https://github.com/agentic-ai-java/argi-examples/tree/main/examples) | Chatbot, multi-agent, graph engineering, and documentation examples |
+| [Benchmark](benchmark) | [argi-benchmark](https://github.com/agentic-ai-java/argi-benchmark) |
 
 ## Documentation
 
