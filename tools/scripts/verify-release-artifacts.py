@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -25,7 +27,15 @@ GROUP_ID = "io.github.agentic-ai-java"
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
 
 
-def verify() -> None:
+def verify_signature(signature: Path, payload: Path) -> None:
+    if not signature.is_file():
+        raise ValueError(f"Missing release signature: {signature}")
+    result = subprocess.run(["gpg", "--batch", "--verify", str(signature), str(payload)], capture_output=True)
+    if result.returncode:
+        raise ValueError(f"Invalid release signature: {signature}")
+
+
+def verify(require_signatures: bool = False) -> None:
     root = ET.parse(REPO_ROOT / "pom.xml").getroot()
     version = root.findtext("m:properties/m:revision", namespaces=NS)
     if not version or "${" in version or version.endswith(("-dev", "-SNAPSHOT")):
@@ -49,11 +59,15 @@ def verify() -> None:
                 raise ValueError(f"Unresolved revision in published POM: {module}")
             if node.tag.endswith("}groupId") and node.text == "io.github.agentic-ai":
                 raise ValueError(f"Old Maven namespace in published POM: {module}")
+        if require_signatures:
+            verify_signature(directory / "target" / f"{artifact}-{version}.pom.asc", directory / ".flattened-pom.xml")
         if pom.findtext("m:packaging", default="jar", namespaces=NS) == "pom":
             continue
         runtime_artifacts.add(artifact)
         for suffix in ("", "-sources", "-javadoc"):
             jar_path = directory / "target" / f"{artifact}-{version}{suffix}.jar"
+            if require_signatures:
+                verify_signature(jar_path.with_name(jar_path.name + ".asc"), jar_path)
             with ZipFile(jar_path) as archive:
                 if not archive.namelist() or archive.testzip() is not None:
                     raise ValueError(f"Invalid release JAR: {jar_path}")
@@ -83,8 +97,11 @@ def verify() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Verify Maven release artifacts and optional GPG signatures")
+    parser.add_argument("--signed", action="store_true", help="Require and verify all release artifact signatures")
+    args = parser.parse_args()
     try:
-        verify()
+        verify(args.signed)
     except (OSError, ET.ParseError, ValueError, BadZipFile) as exc:
         print(f"Release artifact verification failed: {exc}", file=sys.stderr)
         sys.exit(1)

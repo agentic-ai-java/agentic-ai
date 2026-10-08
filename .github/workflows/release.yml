@@ -103,7 +103,7 @@ jobs:
           pnpm --dir argi-studio/agent-chat-ui run build:static
       - name: Build and sign the release
         run: ./mvnw -B -Prelease -DskipTests=true verify
-      - run: python3 tools/scripts/verify-release-artifacts.py
+      - run: python3 tools/scripts/verify-release-artifacts.py --signed
       - name: Publish to Maven Central
         if: ${{ inputs.publish }}
         run: ./mvnw -B -Prelease -DskipTests=true deploy
