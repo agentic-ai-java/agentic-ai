@@ -20,6 +20,7 @@ set -euo pipefail
 readonly BASE_COMMIT="${1:-e3de87198da2509168a975c461885cc6c4c1e7c7}"
 readonly JAPICMP_VERSION="${JAPICMP_VERSION:-0.23.1}"
 readonly REVISION="${REVISION:-2.1.0-RC1}"
+readonly BASELINE_REVISION="${BASELINE_REVISION:-2.1.0-dev}"
 readonly CORE_RUNTIME_MODULES=':argi-graph-core,:argi-agent-framework,:argi-studio,:argi-starter-graph-observation,:argi-starter-builtin-nodes'
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -111,23 +112,23 @@ compare_module() {
 }
 
 compare_module "argi-graph-core" \
-	"${BASELINE_WORKTREE}/argi-graph-core/target/argi-graph-core-${REVISION}.jar" \
+	"${BASELINE_WORKTREE}/argi-graph-core/target/argi-graph-core-${BASELINE_REVISION}.jar" \
 	"${REPO_ROOT}/argi-graph-core/target/argi-graph-core-${REVISION}.jar"
 
 compare_module "argi-agent-framework" \
-	"${BASELINE_WORKTREE}/argi-agent-framework/target/argi-agent-framework-${REVISION}.jar" \
+	"${BASELINE_WORKTREE}/argi-agent-framework/target/argi-agent-framework-${BASELINE_REVISION}.jar" \
 	"${REPO_ROOT}/argi-agent-framework/target/argi-agent-framework-${REVISION}.jar"
 
 compare_module "argi-studio" \
-	"${BASELINE_WORKTREE}/argi-studio/target/argi-studio-${REVISION}.jar" \
+	"${BASELINE_WORKTREE}/argi-studio/target/argi-studio-${BASELINE_REVISION}.jar" \
 	"${REPO_ROOT}/argi-studio/target/argi-studio-${REVISION}.jar"
 
 compare_module "argi-starter-graph-observation" \
-	"${BASELINE_WORKTREE}/spring-boot-starters/argi-starter-graph-observation/target/argi-starter-graph-observation-${REVISION}.jar" \
+	"${BASELINE_WORKTREE}/spring-boot-starters/argi-starter-graph-observation/target/argi-starter-graph-observation-${BASELINE_REVISION}.jar" \
 	"${REPO_ROOT}/spring-boot-starters/argi-starter-graph-observation/target/argi-starter-graph-observation-${REVISION}.jar"
 
 compare_module "argi-starter-builtin-nodes" \
-	"${BASELINE_WORKTREE}/spring-boot-starters/argi-starter-builtin-nodes/target/argi-starter-builtin-nodes-${REVISION}.jar" \
+	"${BASELINE_WORKTREE}/spring-boot-starters/argi-starter-builtin-nodes/target/argi-starter-builtin-nodes-${BASELINE_REVISION}.jar" \
 	"${REPO_ROOT}/spring-boot-starters/argi-starter-builtin-nodes/target/argi-starter-builtin-nodes-${REVISION}.jar"
 
 echo "Core binary compatibility gate passed"
