@@ -82,13 +82,17 @@ def verify(require_signatures: bool = False) -> None:
                 if artifact == "argi-studio" and "META-INF/resources/chatui/index.html" not in archive.namelist():
                     raise ValueError("Studio release JAR must include the embedded UI")
     bom = ET.parse(REPO_ROOT / "argi-bom/.flattened-pom.xml").getroot()
+    bom_version = bom.findtext("m:version", namespaces=NS)
     parent_pom = ET.parse(REPO_ROOT / ".flattened-pom.xml").getroot()
     if parent_pom.find("m:dependencyManagement/m:dependencies", NS) is None:
         raise ValueError("Published parent POM must preserve dependency management")
     managed = set()
     for dependency in bom.findall("m:dependencyManagement/m:dependencies/m:dependency", NS):
         if dependency.findtext("m:groupId", namespaces=NS) == GROUP_ID:
-            if dependency.findtext("m:version", namespaces=NS) != version:
+            managed_version = dependency.findtext("m:version", default="", namespaces=NS)
+            # Maven evaluates this standard property against the published BOM itself.
+            managed_version = managed_version.replace("${project.version}", bom_version or "")
+            if managed_version != version:
                 raise ValueError("BOM must manage the exact release version")
             managed.add(dependency.findtext("m:artifactId", namespaces=NS))
     if managed != runtime_artifacts:
