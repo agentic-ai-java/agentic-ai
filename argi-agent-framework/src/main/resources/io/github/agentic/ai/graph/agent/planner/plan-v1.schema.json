@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ARGI PlanSpec v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "revision", "objective", "steps"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "revision": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "objective": {"type": "string", "minLength": 1},
+    "steps": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/step"}}
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stepId", "objective", "dependencies", "executionTarget", "inputSchema", "outputSchema", "completionCriteria", "status", "result", "error"],
+      "properties": {
+        "stepId": {"type": "string", "minLength": 1},
+        "objective": {"type": "string", "minLength": 1},
+        "dependencies": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "executionTarget": {"type": "string", "minLength": 1},
+        "inputSchema": {"type": "string", "minLength": 1},
+        "outputSchema": {"type": "string", "minLength": 1},
+        "completionCriteria": {"type": "string", "minLength": 1},
+        "status": {"enum": ["PENDING", "RUNNING", "COMPLETED", "FAILED", "SKIPPED"]},
+        "result": {"type": ["string", "null"]},
+        "error": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

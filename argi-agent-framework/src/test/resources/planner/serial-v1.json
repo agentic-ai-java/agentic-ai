@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "objective": "Research and summarize",
+  "steps": [
+    {
+      "stepId": "research",
+      "objective": "Find relevant sources",
+      "dependencies": [],
+      "executionTarget": "tool:search",
+      "inputSchema": "{\"type\":\"object\"}",
+      "outputSchema": "{\"type\":\"string\"}",
+      "completionCriteria": "Return relevant sources",
+      "status": "PENDING",
+      "result": null,
+      "error": null
+    },
+    {
+      "stepId": "summarize",
+      "objective": "Summarize the sources",
+      "dependencies": ["research"],
+      "executionTarget": "agent:writer",
+      "inputSchema": "{\"type\":\"object\"}",
+      "outputSchema": "{\"type\":\"string\"}",
+      "completionCriteria": "Produce a summary with citations",
+      "status": "PENDING",
+      "result": null,
+      "error": null
+    }
+  ]
+}
