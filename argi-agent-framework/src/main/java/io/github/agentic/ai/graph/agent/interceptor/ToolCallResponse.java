@@ -20,6 +20,7 @@ import org.springframework.ai.chat.messages.ToolResponseMessage;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Response object for tool calls.
@@ -27,6 +28,31 @@ import java.util.Map;
 public class ToolCallResponse {
 
     public final static String SUCCESS_STATUS = "SUCCESS";
+
+	/**
+	 * Metadata key carrying the structured failure kind of an error response. Values are
+	 * one of {@link #FAILURE_KIND_TIMEOUT}, {@link #FAILURE_KIND_CANCELLED},
+	 * {@link #FAILURE_KIND_EXECUTION} or {@link #FAILURE_KIND_UNRESOLVED}.
+	 */
+	public static final String FAILURE_KIND_METADATA_KEY = "failureKind";
+
+	/**
+	 * Metadata key carrying the fully qualified class name of the exception that caused
+	 * the failure, when one is available.
+	 */
+	public static final String EXCEPTION_TYPE_METADATA_KEY = "exceptionType";
+
+	/** The tool did not finish within its timeout; its effect is unknown. */
+	public static final String FAILURE_KIND_TIMEOUT = "timeout";
+
+	/** The tool execution was cancelled or interrupted; its effect is unknown. */
+	public static final String FAILURE_KIND_CANCELLED = "cancelled";
+
+	/** The tool was invoked and failed with an exception or an error result. */
+	public static final String FAILURE_KIND_EXECUTION = "execution";
+
+	/** No tool with the requested name could be resolved; nothing was invoked. */
+	public static final String FAILURE_KIND_UNRESOLVED = "unresolved";
 	private final String result;
 	private final String toolName;
 	private final String toolCallId;
@@ -87,6 +113,43 @@ public class ToolCallResponse {
 		return error(toolCallId, toolName, errorMessage);
 	}
 
+	/**
+	 * Creates an error response that carries additional metadata next to the standard
+	 * {@code error} and {@code errorMessage} entries, for example the structured
+	 * {@link #FAILURE_KIND_METADATA_KEY failure kind} and
+	 * {@link #EXCEPTION_TYPE_METADATA_KEY exception type}.
+	 * @param toolCallId the tool call ID
+	 * @param toolName the tool name
+	 * @param errorMessage the error message
+	 * @param additionalMetadata extra metadata entries; may be null or empty
+	 * @return a new error ToolCallResponse
+	 */
+	public static ToolCallResponse error(String toolCallId, String toolName, String errorMessage,
+			Map<String, Object> additionalMetadata) {
+		Map<String, Object> metadata = new HashMap<>();
+		metadata.put("error", true);
+		metadata.put("errorMessage", errorMessage);
+		if (additionalMetadata != null) {
+			metadata.putAll(additionalMetadata);
+		}
+		return new ToolCallResponse("Error: " + errorMessage, toolName, toolCallId, "error", metadata);
+	}
+
+	/**
+	 * Creates an error response from a Throwable that carries additional metadata. The
+	 * message is derived the same way as {@link #error(String, String, Throwable)}.
+	 * @param toolCallId the tool call ID
+	 * @param toolName the tool name
+	 * @param cause the exception that caused the failure
+	 * @param additionalMetadata extra metadata entries; may be null or empty
+	 * @return a new error ToolCallResponse
+	 */
+	public static ToolCallResponse error(String toolCallId, String toolName, Throwable cause,
+			Map<String, Object> additionalMetadata) {
+		String errorMessage = cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
+		return error(toolCallId, toolName, errorMessage, additionalMetadata);
+	}
+
 	public static Builder builder() {
 		return new Builder();
 	}
@@ -117,6 +180,29 @@ public class ToolCallResponse {
 	 */
 	public boolean isError() {
 		return "error".equals(status);
+	}
+
+	/**
+	 * Returns the structured failure kind recorded under
+	 * {@link #FAILURE_KIND_METADATA_KEY}, if present.
+	 * @return the failure kind, or empty when the response carries none
+	 */
+	public Optional<String> getFailureKind() {
+		return metadataString(FAILURE_KIND_METADATA_KEY);
+	}
+
+	/**
+	 * Returns the exception class name recorded under
+	 * {@link #EXCEPTION_TYPE_METADATA_KEY}, if present.
+	 * @return the exception type, or empty when the response carries none
+	 */
+	public Optional<String> getExceptionType() {
+		return metadataString(EXCEPTION_TYPE_METADATA_KEY);
+	}
+
+	private Optional<String> metadataString(String key) {
+		Object value = metadata.get(key);
+		return value instanceof String s ? Optional.of(s) : Optional.empty();
 	}
 
 	public ToolResponseMessage.ToolResponse toToolResponse() {
