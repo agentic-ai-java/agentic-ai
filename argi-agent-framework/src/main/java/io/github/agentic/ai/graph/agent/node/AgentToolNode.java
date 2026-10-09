@@ -393,7 +393,8 @@ public class AgentToolNode implements NodeActionWithConfig {
 					failures.add(e);
 					// CAS: only set error if still null
 					orderedResponses.compareAndSet(index, null,
-							ToolCallResponse.error(toolCall.id(), toolCall.name(), "Tool execution was interrupted"));
+							ToolCallResponse.error(toolCall.id(), toolCall.name(), "Tool execution was interrupted",
+									failureMetadata(e)));
 				}
 			}, executor)
 				.orTimeout(toolExecutionTimeout.toMillis(), TimeUnit.MILLISECONDS)
@@ -406,7 +407,7 @@ public class AgentToolNode implements NodeActionWithConfig {
 						throw new CompletionException(leaseLoss);
 					}
 					ToolCallResponse errorResponse = ToolCallResponse.error(toolCall.id(), toolCall.name(),
-							extractErrorMessage(cause));
+							extractErrorMessage(cause), failureMetadata(cause));
 					if (orderedResponses.compareAndSet(index, null, errorResponse)) {
 						if (cause instanceof TimeoutException) {
 							stateCollector.discardToolUpdateMap(index);
@@ -447,7 +448,8 @@ public class AgentToolNode implements NodeActionWithConfig {
 				// Fallback: create error response for missing result (should not happen normally)
 				AssistantMessage.ToolCall toolCall = toolCalls.get(i);
 				response = ToolCallResponse.error(toolCall.id(), toolCall.name(),
-						"Tool execution did not produce a response");
+						"Tool execution did not produce a response",
+						Map.of(ToolCallResponse.FAILURE_KIND_METADATA_KEY, ToolCallResponse.FAILURE_KIND_EXECUTION));
 				logger.warn("Tool {} at index {} has null response, using error fallback", toolCall.name(), i);
 			}
 			toolResponses.add(response.toToolResponse());
@@ -620,7 +622,8 @@ public class AgentToolNode implements NodeActionWithConfig {
 					.toolName(req.getToolName())
 					.toolCallId(req.getToolCallId())
 					.status("error")
-					.metadata(Map.of("error", true, "unresolvedToolName", req.getToolName()))
+					.metadata(Map.of("error", true, "unresolvedToolName", req.getToolName(),
+							ToolCallResponse.FAILURE_KIND_METADATA_KEY, ToolCallResponse.FAILURE_KIND_UNRESOLVED))
 					.build();
 			}
 
@@ -811,7 +814,8 @@ public class AgentToolNode implements NodeActionWithConfig {
 
 			if (future == null) {
 				return ToolCallResponse.error(request.getToolCallId(), request.getToolName(),
-						"Async tool returned null future");
+						"Async tool returned null future",
+						Map.of(ToolCallResponse.FAILURE_KIND_METADATA_KEY, ToolCallResponse.FAILURE_KIND_EXECUTION));
 			}
 
 			CompletableFuture<String> awaited = new CompletableFuture<>();
@@ -870,23 +874,26 @@ public class AgentToolNode implements NodeActionWithConfig {
 				}
 				extraStateFromToolCall.clear();
 				logger.warn("Async tool {} timed out, discarding any state updates", request.getToolName());
-				return ToolCallResponse.error(request.getToolCallId(), request.getToolName(), extractErrorMessage(cause));
+				return ToolCallResponse.error(request.getToolCallId(), request.getToolName(), extractErrorMessage(cause),
+						failureMetadata(cause));
 			}
 			else if (cause instanceof ToolExecutionException toolExecutionException) {
 				logger.error("Async tool {} execution failed, handling with processor: {}", request.getToolName(),
 						toolExecutionExceptionProcessor.getClass().getName(), toolExecutionException);
 				String result = toolExecutionExceptionProcessor.process(toolExecutionException);
-				return ToolCallResponse.of(request.getToolCallId(), request.getToolName(), result);
+				return processedFailureResponse(request, result, toolExecutionException);
 			}
 			else {
 				logger.error("Async tool {} execution failed: {}", request.getToolName(), cause.getMessage(), cause);
-				return ToolCallResponse.error(request.getToolCallId(), request.getToolName(), extractErrorMessage(cause));
+				return ToolCallResponse.error(request.getToolCallId(), request.getToolName(), extractErrorMessage(cause),
+						failureMetadata(cause));
 			}
 		}
 		catch (CancellationException e) {
 			config.assertExecutionActive();
 			logger.warn("Async tool {} execution was cancelled", request.getToolName(), e);
-			return ToolCallResponse.error(request.getToolCallId(), request.getToolName(), extractErrorMessage(e));
+			return ToolCallResponse.error(request.getToolCallId(), request.getToolName(), extractErrorMessage(e),
+					failureMetadata(e));
 		}
 		catch (LeaseLostException e) {
 			throw e;
@@ -897,7 +904,8 @@ public class AgentToolNode implements NodeActionWithConfig {
 				throw leaseLoss;
 			}
 			logger.error("Async tool {} execution failed: {}", request.getToolName(), e.getMessage(), e);
-			return ToolCallResponse.error(request.getToolCallId(), request.getToolName(), extractErrorMessage(e));
+			return ToolCallResponse.error(request.getToolCallId(), request.getToolName(), extractErrorMessage(e),
+					failureMetadata(e));
 		}
 		finally {
 			try {
@@ -944,7 +952,7 @@ public class AgentToolNode implements NodeActionWithConfig {
 					toolExecutionExceptionProcessor.getClass().getName(), e);
 			String result = toolExecutionExceptionProcessor.process(e);
 			config.assertExecutionActive();
-			return ToolCallResponse.of(request.getToolCallId(), request.getToolName(), result);
+			return processedFailureResponse(request, result, e);
 		}
 		catch (LeaseLostException e) {
 			throw e;
@@ -955,8 +963,55 @@ public class AgentToolNode implements NodeActionWithConfig {
 				throw leaseLoss;
 			}
 			logger.error("Tool {} execution failed: {}", request.getToolName(), e.getMessage(), e);
-			return ToolCallResponse.error(request.getToolCallId(), request.getToolName(), e);
+			return ToolCallResponse.error(request.getToolCallId(), request.getToolName(), e, failureMetadata(e));
 		}
+	}
+
+	/**
+	 * Builds the response for a {@link ToolExecutionException} whose message has already
+	 * been produced by the configured {@link ToolExecutionExceptionProcessor}. The
+	 * response keeps its historical shape (no status) and additionally carries the
+	 * structured failure metadata so interceptors can tell what happened.
+	 */
+	private ToolCallResponse processedFailureResponse(ToolCallRequest request, String result,
+			ToolExecutionException exception) {
+		return ToolCallResponse.builder()
+			.content(result)
+			.toolName(request.getToolName())
+			.toolCallId(request.getToolCallId())
+			.metadata(failureMetadata(exception))
+			.build();
+	}
+
+	/**
+	 * Derives the structured failure metadata for an error response from the throwable
+	 * that caused it: a {@link ToolCallResponse#FAILURE_KIND_METADATA_KEY failure kind}
+	 * and, when available, the {@link ToolCallResponse#EXCEPTION_TYPE_METADATA_KEY class
+	 * name} of the underlying exception. For a {@link ToolExecutionException} the
+	 * exception type is the one thrown by the tool itself, not the wrapper.
+	 */
+	static Map<String, Object> failureMetadata(Throwable error) {
+		Map<String, Object> metadata = new HashMap<>();
+		metadata.put(ToolCallResponse.FAILURE_KIND_METADATA_KEY, failureKindOf(error));
+		Throwable source = error;
+		if (error instanceof ToolExecutionException && error.getCause() != null) {
+			source = error.getCause();
+		}
+		if (source != null) {
+			metadata.put(ToolCallResponse.EXCEPTION_TYPE_METADATA_KEY, source.getClass().getName());
+		}
+		return metadata;
+	}
+
+	private static String failureKindOf(Throwable error) {
+		if (error instanceof TimeoutException) {
+			return ToolCallResponse.FAILURE_KIND_TIMEOUT;
+		}
+		if (error instanceof CancellationException || error instanceof ToolCancelledException
+				|| error instanceof InterruptedException) {
+			return ToolCallResponse.FAILURE_KIND_CANCELLED;
+		}
+		return ToolCallResponse.FAILURE_KIND_EXECUTION;
 	}
 
 	private LeaseLostException leaseLost(Throwable error) {
