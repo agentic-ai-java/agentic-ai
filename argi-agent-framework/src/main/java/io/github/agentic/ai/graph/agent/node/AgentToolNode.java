@@ -31,6 +31,8 @@ import io.github.agentic.ai.graph.agent.tool.DefaultCancellationToken;
 import io.github.agentic.ai.graph.agent.tool.StateAwareToolCallback;
 import io.github.agentic.ai.graph.agent.tool.ToolCancelledException;
 import io.github.agentic.ai.graph.agent.tool.ToolStateCollector;
+import io.github.agentic.ai.graph.agent.validation.ToolArgumentValidator;
+import io.github.agentic.ai.graph.agent.validation.ToolArgumentValidator.ToolArgumentValidationFailure;
 import io.github.agentic.ai.graph.checkpoint.lease.ExecutionGuard;
 import io.github.agentic.ai.graph.checkpoint.lease.LeaseLostException;
 import io.github.agentic.ai.graph.internal.node.ParallelNode;
@@ -114,6 +116,8 @@ public class AgentToolNode implements NodeActionWithConfig {
 
 	private final boolean wrapSyncToolsAsAsync;
 
+	private final boolean validateToolArguments;
+
 	private List<ToolCallback> toolCallbacks;
 
 	private Map<String, Object> toolContext;
@@ -146,6 +150,7 @@ public class AgentToolNode implements NodeActionWithConfig {
 		this.maxParallelTools = builder.maxParallelTools;
 		this.toolExecutionTimeout = builder.toolExecutionTimeout;
 		this.wrapSyncToolsAsAsync = builder.wrapSyncToolsAsAsync;
+		this.validateToolArguments = builder.validateToolArguments;
 	}
 
 	public void setToolCallbacks(List<ToolCallback> toolCallbacks) {
@@ -625,6 +630,25 @@ public class AgentToolNode implements NodeActionWithConfig {
 					.metadata(Map.of("error", true, "unresolvedToolName", req.getToolName(),
 							ToolCallResponse.FAILURE_KIND_METADATA_KEY, ToolCallResponse.FAILURE_KIND_UNRESOLVED))
 					.build();
+			}
+
+			if (validateToolArguments) {
+				Optional<ToolArgumentValidationFailure> failure = ToolArgumentValidator
+						.validate(toolCallback.getToolDefinition().inputSchema(), req.getArguments());
+				if (failure.isPresent()) {
+					ToolArgumentValidationFailure f = failure.get();
+					logger.warn("[ThreadId {}] Agent {} rejected tool {} arguments: {} at {}",
+							config.threadId().orElse(THREAD_ID_DEFAULT), agentName, req.getToolName(), f.errorCode(),
+							f.fieldPath());
+					return ToolCallResponse.builder()
+						.content("Invalid tool arguments: " + f.errorCode() + " at " + f.fieldPath() + " (" + f.message()
+								+ ")")
+						.toolName(req.getToolName())
+						.toolCallId(req.getToolCallId())
+						.status("error")
+						.metadata(Map.of("error", true, "errorCode", f.errorCode(), "fieldPath", f.fieldPath()))
+						.build();
+				}
 			}
 
 			if (enableActingLog) {
@@ -1115,6 +1139,8 @@ public class AgentToolNode implements NodeActionWithConfig {
 
 		private boolean wrapSyncToolsAsAsync = false;
 
+		private boolean validateToolArguments = false;
+
 		private List<ToolCallback> toolCallbacks = new ArrayList<>();
 
 		private Map<String, Object> toolContext = new HashMap<>();
@@ -1195,6 +1221,17 @@ public class AgentToolNode implements NodeActionWithConfig {
 		 */
 		public Builder wrapSyncToolsAsAsync(boolean wrap) {
 			this.wrapSyncToolsAsAsync = wrap;
+			return this;
+		}
+
+		/**
+		 * Enable opt-in validation of tool-call arguments against the tool's declared
+		 * input schema before dispatch. Default: false (legacy pass-through).
+		 * @param validate true to validate tool arguments before dispatch
+		 * @return this builder
+		 */
+		public Builder validateToolArguments(boolean validate) {
+			this.validateToolArguments = validate;
 			return this;
 		}
 

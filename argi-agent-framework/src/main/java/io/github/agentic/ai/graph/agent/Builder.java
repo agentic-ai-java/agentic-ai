@@ -133,6 +133,7 @@ public abstract class Builder {
 	protected int maxParallelTools = 5;
 	protected Duration toolExecutionTimeout = Duration.ofMinutes(5);
 	protected boolean wrapSyncToolsAsAsync = false;
+	protected boolean validateToolArguments = false;
 
 	public Builder name(String name) {
 		this.name = name;
@@ -475,6 +476,22 @@ public abstract class Builder {
 	 */
 	public Builder wrapSyncToolsAsAsync(boolean wrap) {
 		this.wrapSyncToolsAsAsync = wrap;
+		return this;
+	}
+
+	/**
+	 * Enables or disables opt-in validation of tool-call arguments against the tool's
+	 * declared input schema before dispatch.
+	 * <p>
+	 * When enabled, malformed JSON, missing required properties, type/enum/range
+	 * violations and undeclared properties are rejected before the tool callback runs.
+	 * The default is disabled, preserving legacy pass-through behavior.
+	 * @param validate true to validate tool arguments before dispatch, false to pass
+	 * them through unchanged
+	 * @return this builder instance
+	 */
+	public Builder validateToolArguments(boolean validate) {
+		this.validateToolArguments = validate;
 		return this;
 	}
 
