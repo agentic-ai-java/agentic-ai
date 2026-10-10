@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "objective": "Research and summarize",
+  "steps": [
+    {
+      "stepId": "left",
+      "objective": "Research one source",
+      "dependencies": [],
+      "executionTarget": "tool:search",
+      "inputSchema": "{\"type\":\"object\"}",
+      "outputSchema": "{\"type\":\"string\"}",
+      "completionCriteria": "Return first source",
+      "status": "PENDING",
+      "result": null,
+      "error": null
+    },
+    {
+      "stepId": "right",
+      "objective": "Research another source",
+      "dependencies": [],
+      "executionTarget": "tool:search",
+      "inputSchema": "{\"type\":\"object\"}",
+      "outputSchema": "{\"type\":\"string\"}",
+      "completionCriteria": "Return second source",
+      "status": "PENDING",
+      "result": null,
+      "error": null
+    },
+    {
+      "stepId": "merge",
+      "objective": "Summarize both sources",
+      "dependencies": ["left", "right"],
+      "executionTarget": "agent:writer",
+      "inputSchema": "{\"type\":\"object\"}",
+      "outputSchema": "{\"type\":\"string\"}",
+      "completionCriteria": "Produce a combined summary with citations",
+      "status": "PENDING",
+      "result": null,
+      "error": null
+    }
+  ]
+}
