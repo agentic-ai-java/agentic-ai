@@ -157,6 +157,7 @@ public class DefaultBuilder extends Builder {
 				.maxParallelTools(this.maxParallelTools)
 				.toolExecutionTimeout(this.toolExecutionTimeout)
 				.wrapSyncToolsAsAsync(this.wrapSyncToolsAsAsync)
+				.validateToolArguments(this.validateToolArguments)
 				.dynamicToolCallbacksRegistry(dynamicToolCallbacksRegistry);
 
 		if (resolver != null) {
