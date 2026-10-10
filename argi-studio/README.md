@@ -4,16 +4,18 @@ Agent Chat UI provides a visualized way for developers to chat with any ARGI dev
 
 ## Quick Experience
 
-> Go to the [examples](../examples) directory to experience real world usage.
+> See the [Examples repository](https://github.com/agentic-ai-java/argi-examples/tree/main/examples) for real-world usage.
 
 1. Start backend agent
 
-Go to the `src/test/java` directory, start the backend agent by running `StudioApplication`.
+Import the root `pom.xml` into your IDE and run [StudioApplication](src/test/java/io/github/agentic/ai/StudioApplication.java) from the test sources.
+For a local demo without external MCP services, add `--spring.ai.mcp.client.enabled=false --argi.agent.studio.execution.auth-token=local-studio-token` to the program arguments.
 The unified application supports both **Graph** (e.g. `simple_workflow`) and **Agent** (e.g. `single_agent`, `research_agent`) APIs.
 
 2. Then, start the chat ui
 
 ```shell
+cd argi-studio/agent-chat-ui # From the repository root.
 corepack enable
 pnpm install --frozen-lockfile
 pnpm dev
@@ -21,7 +23,8 @@ pnpm dev
 
 3. Chat with agent
 
-Visit `http://localhost:3000`.
+Visit `http://localhost:3000/?agent=single_agent`. Open Studio settings, set `Execution Token`
+to the backend token (`local-studio-token` for the local demo), and reload the page.
 
 ### Embedded mode
 
@@ -62,14 +65,14 @@ saver.migrateLegacyThread(
         .build());
 ```
 
-Build the static UI before packaging the Maven project:
+From the repository root, build the static UI before packaging the Maven project:
 
 ```shell
-cd agent-chat-ui
+cd argi-studio/agent-chat-ui
 pnpm install --frozen-lockfile
 pnpm run build:static
-cd ..
-../mvnw -pl :argi-studio -am -DskipTests package
+cd ../..
+./mvnw -pl :argi-studio -am -DskipTests package
 ```
 
 ### Standalone mode
@@ -100,7 +103,10 @@ pnpm dev
 
 The app will be available at `http://localhost:3000`.
 
-By default, the UI connects to your backend Agent at `http://localhost:8080`, you can change the address at `.env.development` file.
+Start a backend Agent first and configure its execution token as described above.
+By default, the UI connects to `http://localhost:8080`; change the address in `.env.development` if needed.
+Open a known Agent or Graph with `?agent=<agent-name>` or `?graph=<graph-name>` to access Studio settings,
+set the matching `Execution Token`, and reload the page. The home page cannot load its lists until a token is set.
 
 ```properties
 # .env.development

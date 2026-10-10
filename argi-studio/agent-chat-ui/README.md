@@ -18,11 +18,17 @@ Just add the following dependency to your agent project:
 </dependency>
 ```
 
-Run your agent, visit `http:localhost:{your-port}/chatui/index.html`, and now you can chat with you agent.
+Run your agent, visit `http://localhost:{your-port}/chatui/index.html`, and now you can chat with your agent.
+
+Configure `argi.agent.studio.execution.auth-token` in the backend and set the same value in
+`Execution Token` in Studio settings, then reload the page. On first use, append `?agent=<agent-name>`
+or `?graph=<graph-name>` to the UI URL to access settings. This is required in both modes; see
+[Studio authentication](../README.md#embedded-mode).
 
 ### Standalone mode
 
-First, clone the repository,
+Start a backend Agent first; see the [local Studio demo](../README.md#quick-experience).
+Then clone the repository:
 
 ```bash
 git clone https://github.com/agentic-ai-java/argi.git
